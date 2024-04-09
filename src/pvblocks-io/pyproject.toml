@@ -1,0 +1,17 @@
+[project]
+name = "pvblocks_io_rera"
+version = "0.0.1"
+authors = [
+  { name="Erik Haverkamp", email="erik@rera.nl" },
+]
+description = "Python package to directly control pvblocks modules"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/rerasolutions/pvblocks-python"
