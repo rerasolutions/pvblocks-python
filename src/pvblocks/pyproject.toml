@@ -1,5 +1,5 @@
 [project]
-name = "pvblocks_io_rera"
+name = "pvblocks"
 version = "0.0.1"
 authors = [
   { name="Erik Haverkamp", email="erik@rera.nl" },

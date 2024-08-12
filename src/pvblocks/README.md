@@ -1,3 +1,3 @@
-### pvblocks_io_rera
+### pvblocks
 
 Package to control pvblocks modules directly
