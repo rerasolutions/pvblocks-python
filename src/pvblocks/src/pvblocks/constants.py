@@ -30,3 +30,8 @@ class Rr1700Command(IntEnum):
     BroadcastThresholdExceeded = 111,
     CurveRunning = 250
 
+class Rr1700Function(IntEnum):
+    IvMppReadIVPoint = 20,
+    IvMppSetMode = 21,
+    PvIrrReadIrradiances = 30
+

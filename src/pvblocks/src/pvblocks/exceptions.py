@@ -20,3 +20,17 @@ class CannotOpenBlockException(Exception):
 
     def __str__(self):
         return self.__doc__
+
+
+class MethodNotSupportedException(Exception):
+    '''Method not supported for PVBlock.'''
+
+    def __str__(self):
+        return self.__doc__
+
+
+class PvBlocksIsNoneException(Exception):
+    '''PVBlock is None'''
+
+    def __str__(self):
+        return self.__doc__

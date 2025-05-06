@@ -6,6 +6,8 @@ import uuid
 from time import sleep
 
 
+
+
 def show_version():
     return VERSION
 
@@ -21,7 +23,8 @@ class PvBlocks(object):
     TYPES = {
         20: 'IV/MPP IV-Curve control and measure PvBlock',
         30: 'PV-IRR 4x analog voltage readout block',
-        40: 'PV-TEMP 4x Pt100 readout block'
+        40: 'PV-TEMP 4x Pt100 readout block',
+        50: 'PV-MOD digital modbus module'
     }
 
     def __init__(self, serialport):
@@ -41,6 +44,11 @@ class PvBlocks(object):
             raise exceptions.NoResponseException()
         return bts[0] == 3 and bts[1] == constants.Rr1700Command.Alive
 
+
+    def close_system(self):
+        self.uart.close()
+
+
     def scanblocks(self):
         self.uart.write(serial.to_bytes([1, constants.Rr1700Command.ListModules]))
         sleep(2)
@@ -56,6 +64,14 @@ class PvBlocks(object):
             self.Blocks.append(blck)
 
         return module_count > 0
+
+    def reset_controller(self):
+        if not self.uart.is_open:
+            self.uart.open()
+
+        self.uart.write(serial.to_bytes([1, constants.Rr1700Command.ResetController]))
+        sleep(3)
+
 
     def open_block(self, pvblock):
         self.uart.write(serial.to_bytes([1,
@@ -89,6 +105,15 @@ class PvBlocks(object):
         bts = ReadSerial(self.uart)
 
         return len(bts) == 3
+
+    def read_statusbyte(self, pvblock):
+        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.GetStatus]))
+        sleep(0.5)
+        bts = ReadSerial(self.uart)
+        if len(bts) < 10:
+            raise exceptions.UnexpectedResponseException()
+        return StatusByte(bts)
+
 
     def read_data(self, pvblock):
         try:
@@ -129,6 +154,39 @@ class PvBlocks(object):
     def read_ivpoint(self, pvblock):
         return (0, 0)
 
+    def execute_method(self, pvblock, method, parameters=None):
+
+        ivpoint = None
+
+        if pvblock is None:
+            raise exceptions.PvBlocksIsNoneException()
+
+        status = None
+        if parameters is None:
+            parameters = []
+        if method not in pvblock.SupportedMethods:
+            raise exceptions.MethodNotSupportedException()
+
+        self.open_block(pvblock)
+
+        if method == constants.Rr1700Function.IvMppReadIVPoint:
+            status = self.read_statusbyte(pvblock)
+            self.uart.write(serial.to_bytes([2, constants.Rr1700Command.ReadCommand]))
+            sleep(0.5)
+            bts = ReadSerial(self.uart)
+            if len(bts) < 15:
+                raise exceptions.UnexpectedResponseException()
+
+            if bts[2] != 12:
+                raise exceptions.UnexpectedResponseException()
+
+            r1 = int.from_bytes(bts[3:7], "little") / 1000.0
+            r2 = int.from_bytes(bts[7:11], "little") / 1000.0
+            ivpoint = IvPoint(r1, r2)
+
+        self.close_block(pvblock)
+        return ivpoint
+
 
 class PvBlock(object):
     def __init__(self, bytes):
@@ -136,3 +194,27 @@ class PvBlock(object):
         id = int.from_bytes(bytearray(self.bytes), 'little')
         self.Guid = uuid.UUID(int=id)
         self.Type = bytes[8]
+        self.SupportedMethods = self.get_supported_methods()
+
+
+    def get_supported_methods(self):
+        supported_methods = []
+        if self.Type == 20:
+            supported_methods.append(constants.Rr1700Function.IvMppReadIVPoint)
+            supported_methods.append(constants.Rr1700Function.IvMppSetMode)
+
+        return supported_methods
+
+class StatusByte(object):
+    def __init__(self, bytes):
+        self.blocktype = bytes[2]
+        self.token = bytes[3]
+        self.mode = bytes[4]
+        self.statusbytes = bytes[5:]
+
+
+class IvPoint(object):
+    def __init__(self, voltage, current):
+        self.voltage = voltage
+        self.current = current
+        self.power = voltage * current
