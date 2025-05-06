@@ -32,6 +32,11 @@ class Rr1700Command(IntEnum):
 
 class Rr1700Function(IntEnum):
     IvMppReadIVPoint = 20,
-    IvMppSetMode = 21,
+    IvMppApplyState = 21,
     PvIrrReadIrradiances = 30
 
+class IvMppState(IntEnum):
+    Voc = 0,
+    Isc = 1,
+    Mpp = 2,
+    VoltageBias = 3

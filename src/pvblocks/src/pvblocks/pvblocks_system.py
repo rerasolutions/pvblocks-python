@@ -155,9 +155,6 @@ class PvBlocks(object):
         return (0, 0)
 
     def execute_method(self, pvblock, method, parameters=None):
-
-        ivpoint = None
-
         if pvblock is None:
             raise exceptions.PvBlocksIsNoneException()
 
@@ -170,7 +167,6 @@ class PvBlocks(object):
         self.open_block(pvblock)
 
         if method == constants.Rr1700Function.IvMppReadIVPoint:
-            status = self.read_statusbyte(pvblock)
             self.uart.write(serial.to_bytes([2, constants.Rr1700Command.ReadCommand]))
             sleep(0.5)
             bts = ReadSerial(self.uart)
@@ -180,12 +176,38 @@ class PvBlocks(object):
             if bts[2] != 12:
                 raise exceptions.UnexpectedResponseException()
 
-            r1 = int.from_bytes(bts[3:7], "little") / 1000.0
-            r2 = int.from_bytes(bts[7:11], "little") / 1000.0
+            r1 = int.from_bytes(bts[3:7], "little") / 10000.0
+            r2 = int.from_bytes(bts[7:11], "little") / 100000.0
             ivpoint = IvPoint(r1, r2)
 
-        self.close_block(pvblock)
-        return ivpoint
+            self.close_block(pvblock)
+            return ivpoint
+
+        if method == constants.Rr1700Function.IvMppApplyState:
+            requested_state = parameters[0]
+            voltage = None
+            if requested_state == 0:
+                command = constants.Rr1700Command.IdleCommand
+            if requested_state == 1:
+                command = constants.Rr1700Command.VoltageCommand
+                voltage = 0.0
+            if requested_state == 2:
+                command = constants.Rr1700Command.MppCommand
+            if requested_state == 3:
+                command = constants.Rr1700Command.VoltageCommand
+                voltage = parameters[1]
+
+            if voltage is None:
+                self.uart.write(serial.to_bytes([2, command]))
+                sleep(0.5)
+            else:
+                bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+                self.uart.write(serial.to_bytes([2, command, bytes[0], bytes[1], bytes[2], bytes[3]]))
+                sleep(0.5)
+            self.close_block(pvblock)
+
+
+        return None
 
 
 class PvBlock(object):
@@ -201,7 +223,7 @@ class PvBlock(object):
         supported_methods = []
         if self.Type == 20:
             supported_methods.append(constants.Rr1700Function.IvMppReadIVPoint)
-            supported_methods.append(constants.Rr1700Function.IvMppSetMode)
+            supported_methods.append(constants.Rr1700Function.IvMppApplyState)
 
         return supported_methods
 
@@ -218,3 +240,6 @@ class IvPoint(object):
         self.voltage = voltage
         self.current = current
         self.power = voltage * current
+
+    def __str__(self):
+        return "(%f, %f)" % (self.voltage, self.current)
