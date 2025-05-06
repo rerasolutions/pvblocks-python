@@ -2,6 +2,7 @@ from win32com.client import constants
 
 from pvblocks import pvblocks_system
 from pvblocks import constants
+from pvblocks import IvMpp
 from time import sleep
 
 print("PV-Blocks version: " + pvblocks_system.show_version())

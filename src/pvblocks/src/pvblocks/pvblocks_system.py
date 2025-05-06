@@ -4,7 +4,7 @@ from . import constants
 import serial
 import uuid
 from time import sleep
-
+from enum import IntEnum
 
 
 
@@ -35,6 +35,9 @@ class PvBlocks(object):
                                   parity=serial.PARITY_NONE,
                                   stopbits=serial.STOPBITS_ONE,
                                   timeout=1)
+        self.Blocks = []
+        self.IvMppBlocks = []
+        self.PvIrrBlocks = []
 
     def init_system(self):
         self.uart.write(serial.to_bytes([1, constants.Rr1700Command.Alive]))
@@ -49,7 +52,7 @@ class PvBlocks(object):
         self.uart.close()
 
 
-    def scanblocks(self):
+    def scan_blocks(self):
         self.uart.write(serial.to_bytes([1, constants.Rr1700Command.ListModules]))
         sleep(2)
         bts = ReadSerial(self.uart)
@@ -59,9 +62,20 @@ class PvBlocks(object):
 
         module_count = bts[3]
         self.Blocks = []
+        self.IvMppBlocks = []
+        self.PvIrrBlocks = []
         for index in range(module_count):
-            blck = PvBlock(bts[(index * 9) + 4: (index * 9) + 13])
-            self.Blocks.append(blck)
+            match bts[(index * 9) + 4 + 8]:
+                case 20:
+                    blck = IvMpp(bts[(index * 9) + 4: (index * 9) + 13], self.uart)
+                    self.IvMppBlocks.append(blck)
+                case 30:
+                    blck = PvIrr(bts[(index * 9) + 4: (index * 9) + 13], self.uart)
+                    self.PvIrrBlocks.append(blck)
+                case _:
+                    blck = PvBlock(bts[(index * 9) + 4: (index * 9) + 13], self.uart)
+                    self.Blocks.append(blck)
+
 
         return module_count > 0
 
@@ -72,61 +86,6 @@ class PvBlocks(object):
         self.uart.write(serial.to_bytes([1, constants.Rr1700Command.ResetController]))
         sleep(3)
 
-
-    def open_block(self, pvblock):
-        self.uart.write(serial.to_bytes([1,
-                                         constants.Rr1700Command.OpenModule,
-                                         0,
-                                         pvblock.bytes[0],
-                                         pvblock.bytes[1],
-                                         pvblock.bytes[2],
-                                         pvblock.bytes[3],
-                                         pvblock.bytes[4],
-                                         pvblock.bytes[5],
-                                         pvblock.bytes[6],
-                                         pvblock.bytes[7]]))
-        sleep(0.5)
-        bts = ReadSerial(self.uart)
-
-        return len(bts) == 3
-
-    def close_block(self, pvblock):
-        self.uart.write(serial.to_bytes([1,
-                                         constants.Rr1700Command.CloseModule,
-                                         pvblock.bytes[0],
-                                         pvblock.bytes[1],
-                                         pvblock.bytes[2],
-                                         pvblock.bytes[3],
-                                         pvblock.bytes[4],
-                                         pvblock.bytes[5],
-                                         pvblock.bytes[6],
-                                         pvblock.bytes[7]]))
-        sleep(0.5)
-        bts = ReadSerial(self.uart)
-
-        return len(bts) == 3
-
-    def read_statusbyte(self, pvblock):
-        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.GetStatus]))
-        sleep(0.5)
-        bts = ReadSerial(self.uart)
-        if len(bts) < 10:
-            raise exceptions.UnexpectedResponseException()
-        return StatusByte(bts)
-
-
-    def read_data(self, pvblock):
-        try:
-            if pvblock.Type == 20:
-                return self.read_ivpoint(pvblock)
-            if pvblock.Type == 30:
-                return self.read_irradiances(pvblock)
-        except:
-            print("Exception raised")
-        finally:
-            self.close_block(pvblock)
-
-        raise exceptions.NoReadDataImplementedException()
 
     def read_irradiances(self, pvblock):
         if self.open_block(pvblock):
@@ -151,81 +110,173 @@ class PvBlocks(object):
 
         return (0, 0, 0, 0)
 
-    def read_ivpoint(self, pvblock):
-        return (0, 0)
-
-    def execute_method(self, pvblock, method, parameters=None):
-        if pvblock is None:
-            raise exceptions.PvBlocksIsNoneException()
-
-        status = None
-        if parameters is None:
-            parameters = []
-        if method not in pvblock.SupportedMethods:
-            raise exceptions.MethodNotSupportedException()
-
-        self.open_block(pvblock)
-
-        if method == constants.Rr1700Function.IvMppReadIVPoint:
-            self.uart.write(serial.to_bytes([2, constants.Rr1700Command.ReadCommand]))
-            sleep(0.5)
-            bts = ReadSerial(self.uart)
-            if len(bts) < 15:
-                raise exceptions.UnexpectedResponseException()
-
-            if bts[2] != 12:
-                raise exceptions.UnexpectedResponseException()
-
-            r1 = int.from_bytes(bts[3:7], "little") / 10000.0
-            r2 = int.from_bytes(bts[7:11], "little") / 100000.0
-            ivpoint = IvPoint(r1, r2)
-
-            self.close_block(pvblock)
-            return ivpoint
-
-        if method == constants.Rr1700Function.IvMppApplyState:
-            requested_state = parameters[0]
-            voltage = None
-            if requested_state == 0:
-                command = constants.Rr1700Command.IdleCommand
-            if requested_state == 1:
-                command = constants.Rr1700Command.VoltageCommand
-                voltage = 0.0
-            if requested_state == 2:
-                command = constants.Rr1700Command.MppCommand
-            if requested_state == 3:
-                command = constants.Rr1700Command.VoltageCommand
-                voltage = parameters[1]
-
-            if voltage is None:
-                self.uart.write(serial.to_bytes([2, command]))
-                sleep(0.5)
-            else:
-                bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
-                self.uart.write(serial.to_bytes([2, command, bytes[0], bytes[1], bytes[2], bytes[3]]))
-                sleep(0.5)
-            self.close_block(pvblock)
 
 
-        return None
 
 
 class PvBlock(object):
-    def __init__(self, bytes):
+    def __init__(self, bytes, uart):
         self.bytes = bytes[0:8]
         id = int.from_bytes(bytearray(self.bytes), 'little')
         self.Guid = uuid.UUID(int=id)
         self.Type = bytes[8]
-        self.SupportedMethods = self.get_supported_methods()
+        self.uart = uart
+
+    def open(self):
+        self.uart.write(serial.to_bytes([1,
+                                         constants.Rr1700Command.OpenModule,
+                                         0,
+                                         self.bytes[0],
+                                         self.bytes[1],
+                                         self.bytes[2],
+                                         self.bytes[3],
+                                         self.bytes[4],
+                                         self.bytes[5],
+                                         self.bytes[6],
+                                         self.bytes[7]]))
+        sleep(0.5)
+        bts = ReadSerial(self.uart)
+
+        return len(bts) == 3
+
+    def close(self):
+        self.uart.write(serial.to_bytes([1,
+                                         constants.Rr1700Command.CloseModule,
+                                         self.bytes[0],
+                                         self.bytes[1],
+                                         self.bytes[2],
+                                         self.bytes[3],
+                                         self.bytes[4],
+                                         self.bytes[5],
+                                         self.bytes[6],
+                                         self.bytes[7]]))
+        sleep(0.5)
+        bts = ReadSerial(self.uart)
+
+        return len(bts) == 3
 
 
-    def get_supported_methods(self):
-        supported_methods = []
-        if self.Type == 20:
-            supported_methods.append(constants.Rr1700Function.IvMppReadIVPoint)
-            supported_methods.append(constants.Rr1700Function.IvMppApplyState)
+    def read_statusbyte(self):
+        self.open()
+        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.GetStatus]))
+        sleep(0.5)
+        bts = ReadSerial(self.uart)
+        self.close()
+        if len(bts) < 10:
+            raise exceptions.UnexpectedResponseException()
+        return StatusByte(bts)
 
-        return supported_methods
+
+class IvMpp(PvBlock):
+    def read_ivpoint(self):
+
+        self.open()
+        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.ReadCommand]))
+        sleep(0.5)
+        bts = ReadSerial(self.uart)
+        self.close()
+        if len(bts) < 15:
+            raise exceptions.UnexpectedResponseException()
+
+        if bts[2] != 12:
+            raise exceptions.UnexpectedResponseException()
+
+        r1 = int.from_bytes(bts[3:7], "little") / 10000.0
+        r2 = int.from_bytes(bts[7:11], "little") / 100000.0
+        ivpoint = IvPoint(r1, r2)
+
+        return ivpoint
+
+    def ApplyVoc(self):
+        self.open()
+        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.IdleCommand]))
+        sleep(0.5)
+        self.close()
+
+
+    def ApplyMpp(self):
+        self.open()
+        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.MppCommand]))
+        sleep(0.5)
+        self.close()
+
+    def ApplyIsc(self):
+        voltage = 0.0;
+        self.open()
+        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.VoltageCommand, bytes[0], bytes[1], bytes[2], bytes[3]]))
+        sleep(0.5)
+        self.close()
+
+    def ApplyVoltageBias(self, voltage):
+        self.open()
+        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+        self.uart.write(
+            serial.to_bytes([2, constants.Rr1700Command.VoltageCommand, bytes[0], bytes[1], bytes[2], bytes[3]]))
+        sleep(0.5)
+        self.close()
+
+    def MeasureIvCurve(self, points, delay_ms, sweepstyle):
+        self.open()
+
+        self.uart.write(
+            serial.to_bytes([2, constants.Rr1700Command.SetTriggerCommand, 0]))
+
+        sleep(0.5)
+
+        self.uart.write(
+            serial.to_bytes([2, constants.Rr1700Command.CurveCommand, points, delay_ms, 0, 0, 0, 0, sweepstyle]))
+
+        while self.uart.inWaiting() != 3:
+            sleep(0.01)
+
+        bts = ReadSerial(self.uart)
+
+        status = self.read_statusbyte()
+        while status.mode == 5:
+            sleep(0.5)
+            status = self.read_statusbyte()
+
+        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.TransferCurveCommand]))
+        sleep(5)
+        availablebytes = 8 + (points * 8)
+        toread = self.uart.inWaiting()
+        while toread != availablebytes:
+            toread = self.uart.inWaiting()
+            sleep(0.01)
+        bts = ReadSerial(self.uart)
+        if len(bts) < availablebytes:
+            raise exceptions.UnexpectedResponseException()
+
+        self.close()
+
+        return None
+
+
+class PvIrr(PvBlock):
+
+    def ReadIrradiances(self):
+        self.open()
+        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.ReadCommand]))
+        sleep(0.5)
+        bts = ReadSerial(self.uart)
+        if len(bts) < 10:
+            raise exceptions.UnexpectedResponseException()
+
+        irradiances = []
+
+        r1 = int.from_bytes(bts[3:7], "little") / 1000.0
+        r2 = int.from_bytes(bts[7:11], "little") / 1000.0
+        irradiances.append(r1)
+        irradiances.append(r2)
+        if bts[2] == 16:
+            r3 = int.from_bytes(bts[11:15], "little") / 1000.0
+            r4 = int.from_bytes(bts[15:19], "little") / 1000.0
+            irradiances.append(r3)
+            irradiances.append(r4)
+
+        self.close()
+        return irradiances
 
 class StatusByte(object):
     def __init__(self, bytes):
@@ -243,3 +294,11 @@ class IvPoint(object):
 
     def __str__(self):
         return "(%f, %f)" % (self.voltage, self.current)
+
+
+class SweepStyle(IntEnum):
+    ISC_TO_VOC = 0,
+    SWEEP_VOC_TO_ISC = 1,
+    EXTENT_CURVE_DELAY = 2,
+    SWEEP_VOC_ISC_VOC = 4,
+    SWEEP_ISC_VOC_ISC = 8
