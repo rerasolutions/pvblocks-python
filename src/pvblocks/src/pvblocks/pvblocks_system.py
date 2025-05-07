@@ -3,6 +3,7 @@ from . import exceptions
 from . import constants
 import serial
 import uuid
+import struct
 from time import sleep
 from enum import IntEnum
 
@@ -166,6 +167,11 @@ class PvBlock(object):
             raise exceptions.UnexpectedResponseException()
         return StatusByte(bts)
 
+    def get_info(self):
+        status = self.read_statusbyte()
+        d = {'firmware': status.firmware, 'hardware': status.hardware}
+        return d
+
 
 class IvMpp(PvBlock):
     def read_ivpoint(self):
@@ -216,7 +222,7 @@ class IvMpp(PvBlock):
         sleep(0.5)
         self.close()
 
-    def MeasureIvCurve(self, points, delay_ms, sweepstyle):
+    def measure_ivcurve(self, points, delay_ms, sweepstyle):
         self.open()
 
         self.uart.write(
@@ -237,20 +243,60 @@ class IvMpp(PvBlock):
             sleep(0.5)
             status = self.read_statusbyte()
 
+        self.close()
+
+        points_measured = status.statusbytes[0]
+        curve = self.transfer_curve(points_measured)
+
+        return curve
+
+    def transfer_curve(self, points):
+        self.open()
         self.uart.write(serial.to_bytes([2, constants.Rr1700Command.TransferCurveCommand]))
-        sleep(5)
-        availablebytes = 8 + (points * 8)
+        sleep(0.5)
+        availablebytes = 8 + (points * 8) + 1
         toread = self.uart.inWaiting()
         while toread != availablebytes:
             toread = self.uart.inWaiting()
-            sleep(0.01)
+            print(toread)
+            sleep(0.1)
         bts = ReadSerial(self.uart)
-        if len(bts) < availablebytes:
-            raise exceptions.UnexpectedResponseException()
-
         self.close()
 
-        return None
+        voltages = []
+        currents = []
+
+
+        for i in range(int((availablebytes - 1)/8)):
+            index = (i * 8) + 1
+            voltages.append(int.from_bytes(bts[index:(index+4)], "little") / 10000.0)
+            index = index + 4
+            currents.append(int.from_bytes(bts[index:(index+4)], "little") / 100000.0)
+
+        return {'voltages': voltages, 'currents': currents}
+
+    def read_calibration(self):
+        c = {'A': 0.0, 'B': 0.0, 'C': 0.0, 'D': 0.0}
+        bts = self.read_eeprom(4, 16)
+        c['A'] = struct.unpack('<f', bytearray(bts[0:4]))
+        c['B'] = struct.unpack('<f', bytearray(bts[4:8]))
+        c['C'] = struct.unpack('<f', bytearray(bts[8:12]))
+        c['D'] = struct.unpack('<f', bytearray(bts[12:16]))
+
+        return c
+
+    def read_eeprom(self, address, length):
+        bts = list(address.to_bytes(2, 'little'))
+        self.open()
+        self.uart.write(
+            serial.to_bytes([2, constants.Rr1700Command.ReadEepromCommand, length, bts[0], bts[1]]))
+
+        while self.uart.inWaiting() != length + 3:
+            sleep(0.01)
+
+        bts = ReadSerial(self.uart)
+        self.close()
+        return bts[3:]
 
 
 class PvIrr(PvBlock):
@@ -284,6 +330,8 @@ class StatusByte(object):
         self.token = bytes[3]
         self.mode = bytes[4]
         self.statusbytes = bytes[5:]
+        self.firmware = bytes[9]
+        self.hardware = bytes[8]
 
 
 class IvPoint(object):
