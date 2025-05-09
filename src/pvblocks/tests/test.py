@@ -1,8 +1,4 @@
-from win32com.client import constants
-
 from pvblocks import pvblocks_system
-from pvblocks import constants
-from pvblocks import IvMpp
 from time import sleep
 
 print("PV-Blocks version: " + pvblocks_system.show_version())
@@ -15,24 +11,32 @@ if pvblocks.init_system():
 else:
     print("failed")
 
-print("scanning blocks available")
+print("scanning available blocks")
 
-if pvblocks.scanblocks():
+if pvblocks.scan_blocks():
     print("ok")
 else:
     print("failed")
+
+
 
 iv_mpp = None
 
 for b in pvblocks.Blocks:
     print(pvblocks_system.PvBlocks.TYPES[b.Type])
-    if b.Type == 20:
-        iv_mpp = b
 
-ivpoint = pvblocks.execute_method(iv_mpp, constants.Rr1700Function.IvMppReadIVPoint)
+for b in pvblocks.IvMppBlocks:
+    print(pvblocks_system.PvBlocks.TYPES[b.Type])
+
+for b in pvblocks.PvIrrBlocks:
+        print(pvblocks_system.PvBlocks.TYPES[b.Type])
+
+if len(pvblocks.IvMppBlocks) > 0:
+    iv_mpp = pvblocks.IvMppBlocks[0]
+
+#print(iv_mpp.get_info())
+ivpoint = iv_mpp.read_ivpoint()
 print(ivpoint)
-sleep(1)
-pvblocks.execute_method(iv_mpp, constants.Rr1700Function.IvMppApplyState, [constants.IvMppState.VoltageBias, 0.15])
+#curve = iv_mpp.MeasureIvCurve(100, 20, 0)
 
-
-pvblocks.close_system()
+#pvblocks.close_system()
