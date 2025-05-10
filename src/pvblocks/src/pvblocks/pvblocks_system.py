@@ -41,12 +41,12 @@ class PvBlocks(object):
         self.PvIrrBlocks = []
 
     def init_system(self):
-        self.uart.write(serial.to_bytes([1, constants.Rr1700Command.Alive]))
+        self.uart.write(serial.to_bytes([1, constants.ALIVE]))
         sleep(0.5)
         bts = ReadSerial(self.uart)
         if len(bts) != 2:
             raise exceptions.NoResponseException()
-        return bts[0] == 3 and bts[1] == constants.Rr1700Command.Alive
+        return bts[0] == 3 and bts[1] == constants.ALIVE
 
 
     def close_system(self):
@@ -54,11 +54,11 @@ class PvBlocks(object):
 
 
     def scan_blocks(self):
-        self.uart.write(serial.to_bytes([1, constants.Rr1700Command.ListModules]))
+        self.uart.write(serial.to_bytes([1, constants.LIST_MODULES]))
         sleep(2)
         bts = ReadSerial(self.uart)
 
-        if (bts[0] != 3) or (bts[1] != constants.Rr1700Command.ListModules):
+        if (bts[0] != 3) or (bts[1] != constants.LIST_MODULES):
             raise exceptions.UnexpectedResponseException()
 
         module_count = bts[3]
@@ -84,35 +84,8 @@ class PvBlocks(object):
         if not self.uart.is_open:
             self.uart.open()
 
-        self.uart.write(serial.to_bytes([1, constants.Rr1700Command.ResetController]))
+        self.uart.write(serial.to_bytes([1, constants.RESET_CONTROLLER]))
         sleep(3)
-
-
-    def read_irradiances(self, pvblock):
-        if self.open_block(pvblock):
-            self.uart.write(serial.to_bytes([2, constants.Rr1700Command.ReadCommand]))
-            sleep(0.5)
-            bts = ReadSerial(self.uart)
-            if len(bts) < 10:
-                raise exceptions.UnexpectedResponseException()
-
-            r1 = int.from_bytes(bts[3:7], "little") / 1000.0
-            r2 = int.from_bytes(bts[7:11], "little") / 1000.0
-            if bts[2] == 16:
-                r3 = int.from_bytes(bts[11:15], "little") / 1000.0
-                r4 = int.from_bytes(bts[15:19], "little") / 1000.0
-                return r1, r2, r3, r4
-            else:
-                return r1, r2
-
-
-        else:
-            raise exceptions.CannotOpenBlockException()
-
-        return (0, 0, 0, 0)
-
-
-
 
 
 class PvBlock(object):
@@ -125,7 +98,7 @@ class PvBlock(object):
 
     def open(self):
         self.uart.write(serial.to_bytes([1,
-                                         constants.Rr1700Command.OpenModule,
+                                         constants.OPEN_MODULE,
                                          0,
                                          self.bytes[0],
                                          self.bytes[1],
@@ -142,7 +115,7 @@ class PvBlock(object):
 
     def close(self):
         self.uart.write(serial.to_bytes([1,
-                                         constants.Rr1700Command.CloseModule,
+                                         constants.CLOSE_MODULE,
                                          self.bytes[0],
                                          self.bytes[1],
                                          self.bytes[2],
@@ -159,7 +132,7 @@ class PvBlock(object):
 
     def read_statusbyte(self):
         self.open()
-        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.GetStatus]))
+        self.uart.write(serial.to_bytes([2, constants.GET_STATUS]))
         sleep(0.5)
         bts = ReadSerial(self.uart)
         self.close()
@@ -177,7 +150,7 @@ class IvMpp(PvBlock):
     def read_ivpoint(self):
 
         self.open()
-        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.ReadCommand]))
+        self.uart.write(serial.to_bytes([2, constants.READ_COMMAND]))
         sleep(0.5)
         bts = ReadSerial(self.uart)
         self.close()
@@ -195,14 +168,14 @@ class IvMpp(PvBlock):
 
     def ApplyVoc(self):
         self.open()
-        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.IdleCommand]))
+        self.uart.write(serial.to_bytes([2, constants.IDLE_COMMAND]))
         sleep(0.5)
         self.close()
 
 
     def ApplyMpp(self):
         self.open()
-        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.MppCommand]))
+        self.uart.write(serial.to_bytes([2, constants.MPP_COMMAND]))
         sleep(0.5)
         self.close()
 
@@ -226,12 +199,12 @@ class IvMpp(PvBlock):
         self.open()
 
         self.uart.write(
-            serial.to_bytes([2, constants.Rr1700Command.SetTriggerCommand, 0]))
+            serial.to_bytes([2, constants.SET_TRIGGER_COMMAND, 0]))
 
         sleep(0.5)
 
         self.uart.write(
-            serial.to_bytes([2, constants.Rr1700Command.CurveCommand, points, delay_ms, 0, 0, 0, 0, sweepstyle]))
+            serial.to_bytes([2, constants.CURVE_COMMAND, points, delay_ms, 0, 0, 0, 0, sweepstyle]))
 
         while self.uart.inWaiting() != 3:
             sleep(0.01)
@@ -252,7 +225,7 @@ class IvMpp(PvBlock):
 
     def transfer_curve(self, points):
         self.open()
-        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.TransferCurveCommand]))
+        self.uart.write(serial.to_bytes([2, constants.TRANSFER_CURVE_COMMAND]))
         sleep(0.5)
         availablebytes = 8 + (points * 8) + 1
         toread = self.uart.inWaiting()
@@ -289,7 +262,7 @@ class IvMpp(PvBlock):
         bts = list(address.to_bytes(2, 'little'))
         self.open()
         self.uart.write(
-            serial.to_bytes([2, constants.Rr1700Command.ReadEepromCommand, length, bts[0], bts[1]]))
+            serial.to_bytes([2, constants.READ_EEPROM_COMMAND, length, bts[0], bts[1]]))
 
         while self.uart.inWaiting() != length + 3:
             sleep(0.01)
@@ -303,7 +276,7 @@ class PvIrr(PvBlock):
 
     def ReadIrradiances(self):
         self.open()
-        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.ReadCommand]))
+        self.uart.write(serial.to_bytes([2, constants.READ_COMMAND]))
         sleep(0.5)
         bts = ReadSerial(self.uart)
         if len(bts) < 10:
@@ -343,10 +316,3 @@ class IvPoint(object):
     def __str__(self):
         return "(%f, %f)" % (self.voltage, self.current)
 
-
-class SweepStyle(IntEnum):
-    ISC_TO_VOC = 0,
-    SWEEP_VOC_TO_ISC = 1,
-    EXTENT_CURVE_DELAY = 2,
-    SWEEP_VOC_ISC_VOC = 4,
-    SWEEP_ISC_VOC_ISC = 8

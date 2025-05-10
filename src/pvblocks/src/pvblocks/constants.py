@@ -1,42 +1,43 @@
-from enum import IntEnum
+IDLE_COMMAND = 0
+BLINK_COMMAND = 1
+VOLTAGE_COMMAND = 2
+MPP_COMMAND = 3
+READ_COMMAND = 4
+CURVE_COMMAND = 5
+TRANSFER_CURVE_COMMAND = 6
+EXTERNAL_MPP_COMMAND = 7
+TRIGGERED_CURVE_COMMAND = 8
+GET_STATUS = 13
+WRITE_EEPROM_COMMAND = 14
+SET_TRIGGER_COMMAND = 15
+READ_EEPROM_COMMAND = 16
+UPDATE_CONFIG_COMMAND = 17
+GET_CONFIG_COMMAND = 18
+START_FIRMWARE_UPDATE = 19
+ENABLE_FAST_COMMUNICATIONS = 20
+DISABLE_BROADCAST = 21
+TRIGGERED_READ_COMMAND = 50
+ALIVE = 100
+LIST_MODULES = 101
+OPEN_MODULE = 106
+CLOSE_MODULE = 107
+RESET_MODULE = 108
+RESET_CONTROLLER = 109
+TRIGGER_ALL = 110
+BROADCAST_THRESHOLD_EXCEEDED = 111
+CURVE_RUNNING = 250
 
-class Rr1700Command(IntEnum):
-    IdleCommand = 0,
-    BlinkCommand = 1,
-    VoltageCommand = 2,
-    MppCommand = 3,
-    ReadCommand = 4,
-    CurveCommand = 5,
-    TransferCurveCommand = 6,
-    ExternalMppCommand = 7,
-    TriggeredCurveCommand = 8,
-    GetStatus = 13,
-    WriteEepromCommand = 14,
-    SetTriggerCommand = 15,
-    ReadEepromCommand = 16,
-    UpdateConfigCommand = 17,
-    GetConfigCommand = 18,
-    StartFirmwareUpdate = 19,
-    EnableFastCommunications = 20,
-    DisableBroadcast = 21,
-    TriggeredReadCommand = 50,
-    Alive = 100,
-    ListModules = 101,
-    OpenModule = 106,
-    CloseModule = 107,
-    ResetModule = 108,
-    ResetController = 109,
-    TriggerAll = 110,
-    BroadcastThresholdExceeded = 111,
-    CurveRunning = 250
+IVMPP_READ_IVPOINT = 20
+IVMPP_APPLY_STATE = 21
+PV_IRR_READ_IRRADIANCES = 30
 
-class Rr1700Function(IntEnum):
-    IvMppReadIVPoint = 20,
-    IvMppApplyState = 21,
-    PvIrrReadIrradiances = 30
+VOC = 0
+ISC = 1
+MPP = 2
+VOLTAGE_BIAS = 3
 
-class IvMppState(IntEnum):
-    Voc = 0,
-    Isc = 1,
-    Mpp = 2,
-    VoltageBias = 3
+ISC_TO_VOC = 0,
+SWEEP_VOC_TO_ISC = 1
+EXTENT_CURVE_DELAY = 2
+SWEEP_VOC_ISC_VOC = 4
+SWEEP_ISC_VOC_ISC = 8
