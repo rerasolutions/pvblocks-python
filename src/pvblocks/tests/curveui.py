@@ -1,26 +1,96 @@
-from tkinter import *
+import tkinter as tk
+from tkinter import ttk
+import serial.tools.list_ports
 
-def connect():
-    print('connect pvblocks')
-    connect_menu.entryconfig(0, state=DISABLED)
-    connect_menu.entryconfig(1, state=NORMAL)
+class MainWindow:
+    def __init__(self, parent):
+        self.root = parent
+        self.online = False
+        self.port = 'COM1'
 
-def disconnect():
-    print('disconnect pvblocks')
-    connect_menu.entryconfig(0, state=NORMAL)
-    connect_menu.entryconfig(1, state=DISABLED)
+        parent.geometry("300x200")
+        parent.title("IV-Load IV-Curve")
+        self.label = tk.Label(parent, text='The Main Window')
+        self.label.pack()
+
+        self.button = tk.Button(parent, text='Connect', width=25, command=self.system_connect)
+        self.button.pack()
+
+        self.menu = tk.Menu(parent)
+        parent.config(menu=self.menu)
+        self.connect_menu = tk.Menu(self.menu)
+        self.menu.add_cascade(label='File', menu=self.connect_menu)
+        self.connect_menu.add_command(label='Connect...', command=self.connect)
+        self.connect_menu.add_command(label='Close...', command=self.disconnect, state='disabled')
+        self.connect_menu.add_separator()
+        self.connect_menu.add_command(label='Exit', command=parent.quit)
+        self.configmenu = tk.Menu(self.menu)
+        self.menu.add_cascade(label='Configure', menu=self.configmenu)
+        self.configmenu.add_command(label='Select serialport', command=self.open_comport_window)
+        self.helpmenu = tk.Menu(self.menu)
+        self.menu.add_cascade(label='Help', menu=self.helpmenu)
+        self.helpmenu.add_command(label='About')
 
 
-root = Tk()
-menu = Menu(root)
-root.config(menu=menu)
-connect_menu = Menu(menu)
-menu.add_cascade(label='File', menu=connect_menu)
-connect_menu.add_command(label='Connect...', command=connect)
-connect_menu.add_command(label='Close...', command=disconnect, state='disabled')
-connect_menu.add_separator()
-connect_menu.add_command(label='Exit', command=root.quit)
-helpmenu = Menu(menu)
-menu.add_cascade(label='Help', menu=helpmenu)
-helpmenu.add_command(label='About')
-mainloop()
+
+
+    def connect(self):
+        print('connect pvblocks using: ' + self.port)
+
+        self.connect_menu.entryconfig(0, state=tk.DISABLED)
+        self.connect_menu.entryconfig(1, state=tk.NORMAL)
+        self.button.configure(text="Disconnect")
+        self.online = True
+
+    def disconnect(self):
+        print('disconnect pvblocks')
+        self.connect_menu.entryconfig(0, state=tk.NORMAL)
+        self.connect_menu.entryconfig(1, state=tk.DISABLED)
+        self.button.configure(text="Connect")
+        self.online = False
+
+    def system_connect(self):
+        if self.online:
+            self.disconnect()
+        else:
+            self.connect()
+
+    def open_comport_window(self):
+        # Create a new top-level window
+        comport_window = tk.Toplevel(self.root)
+        comport_window.title("Select Serial Port")
+        comport_window.geometry("300x150")
+
+        # Make the window modal
+        comport_window.grab_set()
+
+        # Label instructing the user
+        label = tk.Label(comport_window, text="Select a serial port:")
+        label.pack(pady=10)
+
+        # List of COM ports - customizable
+        com_ports = serial.tools.list_ports.comports()
+
+        # Variable to hold the selected port
+        selected_port = tk.StringVar()
+
+        # Combobox for selecting COM port
+        combo = ttk.Combobox(comport_window, values=com_ports, textvariable=selected_port)
+        combo.pack(pady=5)
+        combo.current(0)  # Set default selection
+
+        # Function to handle selection
+        def select_port():
+            self.port = selected_port.get()
+            comport_window.grab_release()
+            comport_window.destroy()
+
+        # Button to confirm selection
+        select_button = tk.Button(comport_window, text="Select", command=select_port)
+        select_button.pack(pady=10)
+
+
+root = tk.Tk()
+
+MainWindow(root)
+root.mainloop()
