@@ -15,22 +15,43 @@ class MainWindow:
         self.voltages = []
         self.currents = []
         self.load_settings()
-        self.adder = 0.1;
 
-        parent.geometry("800x600")
+        #parent.geometry("800x600")
         parent.title("IV-Load IV-Curve")
 
 
+
         self.connectBtn = tk.Button(parent, text='Connect', width=25, command=self.system_connect)
-        self.connectBtn.pack()
+        self.connectBtn.grid(column=0, row=0, columnspan=2)
+
+
 
         self.measureCurveBtn = tk.Button(parent, text='Measure Curve', width=25, command=self.system_measure_curve, state=tk.DISABLED)
-        self.measureCurveBtn.pack()
+        self.measureCurveBtn.grid(column=0, row=1, columnspan=2)
 
-        self.fig = Figure((6, 6), dpi=80)
+        self.fig = Figure((8, 6), dpi=100)
         canvas = FigureCanvasTkAgg(self.fig, master=self.root)
-        canvas.get_tk_widget().pack()
+        canvas.get_tk_widget().grid(column=0, row=2, columnspan=6)
         self.draw_figure()
+
+        point_entry = tk.Entry(parent)
+        delay_entry = tk.Entry(parent)
+
+        tk.Label(parent, text='Points').grid(row=3, column=0)
+        tk.Label(parent, text='Delay [ms]').grid(row=3, column=2)
+        tk.Label(parent, text='Sweep type').grid(row=3, column=4)
+        point_entry.grid(row=3, column=1)
+        delay_entry.grid(row=3, column=3)
+
+
+        point_entry.insert(0, self.settings['points'])
+        delay_entry.insert(0, self.settings['delay_ms'])
+
+        self.cbSweepStyle = ttk.Combobox(parent, state="readonly",
+                                         values=("Isc to Voc", "Voc to Isc", "Isc to Voc to Isc", "Voc to Isc to Voc"))
+        self.cbSweepStyle.grid(row=3, column=5)
+        self.cbSweepStyle.set(self.settings['sweepstyle'])
+        self.cbSweepStyle.bind("<<ComboboxSelected>>", self.select_sweepstyle)
 
         self.menu = tk.Menu(parent)
         parent.config(menu=self.menu)
@@ -76,9 +97,13 @@ class MainWindow:
         else:
             self.connect()
 
+    def select_sweepstyle(self, event):
+        self.settings['sweepstyle'] = self.cbSweepStyle.get()
+
 
     def system_measure_curve(self):
         print('measure curve')
+        self.save_settings()
         self.voltages = []
         self.currents = []
 
@@ -88,8 +113,8 @@ class MainWindow:
 
 
     def refresh_figure(self):
-        y = [(i+self.adder) ** 2 for i in range(101)]
-        self.adder = self.adder + 2
+        y = [(i) ** 2 for i in range(101)]
+
         self.fig.clear()
         ax = self.fig.add_subplot(111)
         ax.scatter(self.voltages, self.currents)
@@ -107,7 +132,7 @@ class MainWindow:
             pickle.dump(self.settings, f)
 
     def load_settings(self):
-        self.settings = {'serialport': 'COM1'}
+        self.settings = {'serialport': 'COM1', 'points': '100', 'delay_ms': '20', 'sweepstyle': 'Isc to Voc'}
 
         if os.path.isfile('settings.pkl'):
             with open('settings.pkl', 'rb') as f:
