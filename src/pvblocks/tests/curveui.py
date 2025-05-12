@@ -1,12 +1,20 @@
 import tkinter as tk
 from tkinter import ttk
 import serial.tools.list_ports
+import pickle
+import os
+
 
 class MainWindow:
     def __init__(self, parent):
+        self.settings = None
         self.root = parent
         self.online = False
-        self.port = 'COM1'
+        self.load_settings()
+
+
+
+
 
         parent.geometry("300x200")
         parent.title("IV-Load IV-Curve")
@@ -35,7 +43,7 @@ class MainWindow:
 
 
     def connect(self):
-        print('connect pvblocks using: ' + self.port)
+        print('connect pvblocks using: ' + self.settings['serialport'])
 
         self.connect_menu.entryconfig(0, state=tk.DISABLED)
         self.connect_menu.entryconfig(1, state=tk.NORMAL)
@@ -54,6 +62,24 @@ class MainWindow:
             self.disconnect()
         else:
             self.connect()
+
+    def save_settings(self):
+        with open('settings.pkl', 'wb') as f:
+            pickle.dump(self.settings, f)
+
+    def load_settings(self):
+        self.settings = {'serialport': 'COM1'}
+
+        if os.path.isfile('settings.pkl'):
+            with open('settings.pkl', 'rb') as f:
+                self.settings = pickle.load(f)
+        else:
+            with open('settings.pkl', 'wb') as f:
+                pickle.dump(self.settings, f)
+
+        for key in self.settings.keys():
+            print(self.settings[key])
+
 
     def open_comport_window(self):
         # Create a new top-level window
@@ -81,7 +107,8 @@ class MainWindow:
 
         # Function to handle selection
         def select_port():
-            self.port = selected_port.get()
+            self.settings['serialport'] = selected_port.get()
+            self.save_settings()
             comport_window.grab_release()
             comport_window.destroy()
 
@@ -91,6 +118,5 @@ class MainWindow:
 
 
 root = tk.Tk()
-
 MainWindow(root)
 root.mainloop()
