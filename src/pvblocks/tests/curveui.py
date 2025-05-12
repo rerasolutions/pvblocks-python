@@ -5,6 +5,7 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationTool
 import serial.tools.list_ports
 import pickle
 import os
+from pvblocks import pvblocks_system
 
 
 class MainWindow:
@@ -14,17 +15,15 @@ class MainWindow:
         self.online = False
         self.voltages = []
         self.currents = []
+        self.pvblocks = None
+        self.iv_mpp = None
         self.load_settings()
 
         #parent.geometry("800x600")
         parent.title("IV-Load IV-Curve")
 
-
-
         self.connectBtn = tk.Button(parent, text='Connect', width=25, command=self.system_connect)
         self.connectBtn.grid(column=0, row=0, columnspan=2)
-
-
 
         self.measureCurveBtn = tk.Button(parent, text='Measure Curve', width=25, command=self.system_measure_curve, state=tk.DISABLED)
         self.measureCurveBtn.grid(column=0, row=1, columnspan=2)
@@ -70,12 +69,31 @@ class MainWindow:
 
 
     def connect(self):
+        self.online = False
         print('connect pvblocks using: ' + self.settings['serialport'])
-        self.online = True
+        self.pvblocks = pvblocks_system.PvBlocks(self.settings['serialport'])
+        if self.pvblocks.init_system():
+            print("init ok")
+            print("scanning available blocks")
+
+            if self.pvblocks.scan_blocks():
+                print("scan_blocks returns ok")
+                self.iv_mpp = None
+                if len(self.pvblocks.IvMppBlocks) > 0:
+                    self.iv_mpp = self.pvblocks.IvMppBlocks[0]
+                    self.online = True
+                    print("Found IV-MPP block")
+            else:
+                print("scan_blocks failed")
+
+        else:
+            print("failed")
+
         self.update_controls()
 
     def disconnect(self):
         print('disconnect pvblocks')
+        self.pvblocks.close()
         self.online = False
         self.update_controls()
 
@@ -106,9 +124,10 @@ class MainWindow:
         self.save_settings()
         self.voltages = []
         self.currents = []
+        curve = self.iv_mpp.measure_ivcurve(100, 20, 0)
 
-        self.voltages = [0,1,2,3,4,5,6,7,8,9]
-        self.currents = [3,5,2,1,3,4,6,5,4,5]
+        self.voltages = curve['voltages']
+        self.currents = curve['currents']
         self.refresh_figure()
 
 
@@ -159,7 +178,10 @@ class MainWindow:
         label.pack(pady=10)
 
         # List of COM ports - customizable
-        com_ports = serial.tools.list_ports.comports()
+        com_ports = []
+        for c in serial.tools.list_ports.comports():
+            com_ports.append(c.device)
+
 
         # Variable to hold the selected port
         selected_port = tk.StringVar()

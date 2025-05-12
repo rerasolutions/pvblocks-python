@@ -239,8 +239,8 @@ class IvMpp(PvBlock):
         voltages = []
         currents = []
 
-
-        for i in range(int((availablebytes - 1)/8)):
+        print(availablebytes)
+        for i in range(1, int((availablebytes - 1)/8)):
             index = (i * 8) + 1
             voltages.append(int.from_bytes(bts[index:(index+4)], "little") / 10000.0)
             index = index + 4

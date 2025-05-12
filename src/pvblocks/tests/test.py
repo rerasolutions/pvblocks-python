@@ -37,6 +37,6 @@ if len(pvblocks.IvMppBlocks) > 0:
 #print(iv_mpp.get_info())
 ivpoint = iv_mpp.read_ivpoint()
 print(ivpoint)
-#curve = iv_mpp.MeasureIvCurve(100, 20, 0)
+curve = iv_mpp.measure_ivcurve(100, 20, 0)
 
-#pvblocks.close_system()
+pvblocks.close_system()
