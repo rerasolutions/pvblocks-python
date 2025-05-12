@@ -93,7 +93,7 @@ class MainWindow:
 
     def disconnect(self):
         print('disconnect pvblocks')
-        self.pvblocks.close()
+        self.pvblocks.close_system()
         self.online = False
         self.update_controls()
 
@@ -121,10 +121,13 @@ class MainWindow:
 
     def system_measure_curve(self):
         print('measure curve')
+        self.voltages = []
+        self.currents = []
+        self.refresh_figure()
         self.save_settings()
         self.voltages = []
         self.currents = []
-        curve = self.iv_mpp.measure_ivcurve(100, 20, 0)
+        curve = self.iv_mpp.measure_ivcurve(int(self.settings['points']), int(self.settings['delay_ms']), 0)
 
         self.voltages = curve['voltages']
         self.currents = curve['currents']
@@ -132,7 +135,7 @@ class MainWindow:
 
 
     def refresh_figure(self):
-        y = [(i) ** 2 for i in range(101)]
+
 
         self.fig.clear()
         ax = self.fig.add_subplot(111)
