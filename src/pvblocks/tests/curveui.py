@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import serial.tools.list_ports
 import pickle
 import os
@@ -10,26 +12,32 @@ class MainWindow:
         self.settings = None
         self.root = parent
         self.online = False
+        self.voltages = []
+        self.currents = []
         self.load_settings()
+        self.adder = 0.1;
 
-
-
-
-
-        parent.geometry("300x200")
+        parent.geometry("800x600")
         parent.title("IV-Load IV-Curve")
-        self.label = tk.Label(parent, text='The Main Window')
-        self.label.pack()
 
-        self.button = tk.Button(parent, text='Connect', width=25, command=self.system_connect)
-        self.button.pack()
+
+        self.connectBtn = tk.Button(parent, text='Connect', width=25, command=self.system_connect)
+        self.connectBtn.pack()
+
+        self.measureCurveBtn = tk.Button(parent, text='Measure Curve', width=25, command=self.system_measure_curve, state=tk.DISABLED)
+        self.measureCurveBtn.pack()
+
+        self.fig = Figure((6, 6), dpi=80)
+        canvas = FigureCanvasTkAgg(self.fig, master=self.root)
+        canvas.get_tk_widget().pack()
+        self.draw_figure()
 
         self.menu = tk.Menu(parent)
         parent.config(menu=self.menu)
         self.connect_menu = tk.Menu(self.menu)
         self.menu.add_cascade(label='File', menu=self.connect_menu)
         self.connect_menu.add_command(label='Connect...', command=self.connect)
-        self.connect_menu.add_command(label='Close...', command=self.disconnect, state='disabled')
+        self.connect_menu.add_command(label='Disconnect...', command=self.disconnect, state='disabled')
         self.connect_menu.add_separator()
         self.connect_menu.add_command(label='Exit', command=parent.quit)
         self.configmenu = tk.Menu(self.menu)
@@ -40,28 +48,59 @@ class MainWindow:
         self.helpmenu.add_command(label='About')
 
 
-
-
     def connect(self):
         print('connect pvblocks using: ' + self.settings['serialport'])
-
-        self.connect_menu.entryconfig(0, state=tk.DISABLED)
-        self.connect_menu.entryconfig(1, state=tk.NORMAL)
-        self.button.configure(text="Disconnect")
         self.online = True
+        self.update_controls()
 
     def disconnect(self):
         print('disconnect pvblocks')
-        self.connect_menu.entryconfig(0, state=tk.NORMAL)
-        self.connect_menu.entryconfig(1, state=tk.DISABLED)
-        self.button.configure(text="Connect")
         self.online = False
+        self.update_controls()
+
+    def update_controls(self):
+        if self.online:
+            self.connect_menu.entryconfig(0, state=tk.DISABLED)
+            self.connect_menu.entryconfig(1, state=tk.NORMAL)
+            self.measureCurveBtn.configure(state='normal')
+            self.connectBtn.configure(text="Disconnect")
+        else:
+            self.connect_menu.entryconfig(0, state=tk.NORMAL)
+            self.connect_menu.entryconfig(1, state=tk.DISABLED)
+            self.connectBtn.configure(text="Connect")
+            self.measureCurveBtn.configure(state='disabled')
 
     def system_connect(self):
         if self.online:
             self.disconnect()
         else:
             self.connect()
+
+
+    def system_measure_curve(self):
+        print('measure curve')
+        self.voltages = []
+        self.currents = []
+
+        self.voltages = [0,1,2,3,4,5,6,7,8,9]
+        self.currents = [3,5,2,1,3,4,6,5,4,5]
+        self.refresh_figure()
+
+
+    def refresh_figure(self):
+        y = [(i+self.adder) ** 2 for i in range(101)]
+        self.adder = self.adder + 2
+        self.fig.clear()
+        ax = self.fig.add_subplot(111)
+        ax.scatter(self.voltages, self.currents)
+        self.fig.canvas.draw_idle()
+
+    def draw_figure(self):
+        y = []
+        x = []
+        ax = self.fig.add_subplot(111)
+        ax.scatter(x, y)
+        self.fig.canvas.draw()
 
     def save_settings(self):
         with open('settings.pkl', 'wb') as f:
