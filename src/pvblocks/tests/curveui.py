@@ -1,17 +1,16 @@
-import datetime
-import pathlib
+import datetime, pickle, os
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from ttkbootstrap import utility
+from ttkbootstrap.dialogs import Messagebox
+from tkinter.filedialog import asksaveasfilename
+import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import serial.tools.list_ports
-import pickle
-import os
-from pvblocks import pvblocks_system
 from pvlib.ivtools.utils import rectify_iv_curve
-import numpy as np
-from tkinter.filedialog import asksaveasfilename
+
+from pvblocks import pvblocks_system
+
 
 class MainApp(ttk.Frame):
 
@@ -20,6 +19,7 @@ class MainApp(ttk.Frame):
         self.pack(fill=BOTH, expand=YES)
         self.master = master
 
+        self.status_var = ttk.StringVar(value='---')
         self.online = False
         self.is_active = False
         self.voltages = []
@@ -44,22 +44,25 @@ class MainApp(ttk.Frame):
         self.ff_var = ttk.StringVar(value='---')
         self.power_var = ttk.StringVar(value='---')
 
+
         self.ivparameters = {}
 
         self.create_menu()
         # header and labelframe option container
         option_text = "IV/MPP Load control"
         self.option_lf = ttk.Labelframe(self, text=option_text, padding=15)
-        self.option_lf.pack(fill=X, expand=YES, anchor=N)
+        self.option_lf.pack(fill=X, expand=YES, anchor=N, pady=30)
 
         data_text = "Measurement"
         self.data_lf = ttk.Labelframe(self, text=data_text, padding=15)
         self.data_lf.pack(fill=X, expand=YES, anchor=N)
 
+        status_ent = ttk.Entry(self, textvariable=self.status_var)
+        status_ent.pack(side=LEFT, fill=X, expand=YES, pady=5)
 
         self.create_mode_row()
         self.create_curveinput_row()
-        self.create_ivpoint_row()
+
 
         self.create_graph()
         self.create_parameters_table('ID:', self.id_var)
@@ -70,11 +73,14 @@ class MainApp(ttk.Frame):
         self.create_parameters_table('Pmax:', self.power_var)
         self.create_parameters_table('FF:', self.ff_var)
         self.create_save_button()
-
         self.draw_empty_figure()
         self.update_controls()
 
 
+    def print_status(self, text):
+        print(text)
+        self.status_var.set(text)
+        self.master.update()
 
 
     def create_menu(self):
@@ -91,7 +97,11 @@ class MainApp(ttk.Frame):
         self.configmenu.add_command(label='Select serialport', command=self.open_comport_window)
         self.helpmenu = ttk.Menu(self.menu)
         self.menu.add_cascade(label='Help', menu=self.helpmenu)
-        self.helpmenu.add_command(label='About')
+        self.helpmenu.add_command(label='About', command=self.about)
+
+    def about(self):
+        Messagebox.ok('IV-Curve measurement')
+
 
     def create_parameters_table(self, caption, variable):
         isc_row = ttk.Frame(self.data_lf)
@@ -188,13 +198,26 @@ class MainApp(ttk.Frame):
         )
         self.apply_btn.pack(side=LEFT, padx=5)
 
+        ivpoint_lbl = ttk.Label(type_row, text="IV-Point", width=8)
+        ivpoint_lbl.pack(side=LEFT, padx=(15, 0))
+        ivpoint_ent = ttk.Entry(type_row, textvariable=self.ivpoint_var)
+        ivpoint_ent.pack(side=LEFT, fill=X, expand=YES, padx=5)
+        self.measure_ivpoint_btn = ttk.Button(
+            master=type_row,
+            text="Measure point",
+            command=self.measure_ivpoint,
+            width=18
+        )
+        self.measure_ivpoint_btn.pack(side=LEFT, padx=5)
+
+
     def create_graph(self):
         print("Create graph")
         canvas = FigureCanvasTkAgg(self.fig, master=self.data_lf)
         canvas.get_tk_widget().pack(side=LEFT)
 
     def on_apply(self):
-        print(self.mode_var.get())
+        self.print_status(self.mode_var.get())
         if self.mode_var.get() == 'isc':
             self.iv_mpp.ApplyIsc()
         else:
@@ -202,7 +225,7 @@ class MainApp(ttk.Frame):
 
     def system_measure_curve(self):
 
-        print('measure curve')
+        self.print_status('measure curve')
         self.save_btn.configure(state=ttk.DISABLED)
         self.is_active = True
         self.update_controls()
@@ -241,7 +264,7 @@ class MainApp(ttk.Frame):
 
 
     def measure_ivpoint(self):
-        print('measure point')
+        self.print_status('measure point')
         self.is_active = True
         self.update_controls()
         ivpoint = self.iv_mpp.read_ivpoint()
@@ -260,36 +283,36 @@ class MainApp(ttk.Frame):
             self.connect()
 
     def exit_app(self):
-        print('exit app')
+        self.print_status('exit app')
         if self.online:
             self.disconnect()
         self.master.quit()
 
     def connect(self):
         self.online = False
-        print('connect pvblocks using: ' + self.settings['serialport'])
+        self.print_status('connect pvblocks using: ' + self.settings['serialport'])
         self.pvblocks = pvblocks_system.PvBlocks(self.settings['serialport'])
         if self.pvblocks.init_system():
-            print("init ok")
-            print("scanning available blocks")
+            self.print_status("init ok")
+            self.print_status("scanning available blocks")
 
             if self.pvblocks.scan_blocks():
-                print("scan_blocks returns ok")
+                self.print_status("scan_blocks returns ok")
                 self.iv_mpp = None
                 if len(self.pvblocks.IvMppBlocks) > 0:
                     self.iv_mpp = self.pvblocks.IvMppBlocks[0]
                     self.online = True
-                    print("Found IV-MPP block")
+                    self.print_status("Found IV-MPP block")
             else:
-                print("scan_blocks failed")
+                self.print_status("scan_blocks failed")
 
         else:
-            print("failed")
+            self.print_status("failed")
 
         self.update_controls()
 
     def disconnect(self):
-        print('disconnect pvblocks')
+        self.print_status('disconnect pvblocks')
         self.pvblocks.close_system()
         self.online = False
         self.update_controls()
@@ -427,8 +450,6 @@ class MainApp(ttk.Frame):
             with open('settings.pkl', 'wb') as f:
                 pickle.dump(self.settings, f)
 
-        for key in self.settings.keys():
-            print(self.settings[key])
 
 
 if __name__ == '__main__':
