@@ -9,15 +9,15 @@ import serial.tools.list_ports
 import pickle
 import os
 from pvblocks import pvblocks_system
-
+from pvlib.ivtools.utils import rectify_iv_curve
+import numpy as np
+from tkinter.filedialog import asksaveasfilename
 
 class MainApp(ttk.Frame):
 
     def __init__(self, master):
         super().__init__(master, padding=15)
         self.pack(fill=BOTH, expand=YES)
-
-
         self.master = master
 
         self.online = False
@@ -28,23 +28,23 @@ class MainApp(ttk.Frame):
         self.iv_mpp = None
         self.load_settings()
 
-
-
         self.fig = Figure((6, 4), dpi=100)
         # application variables
         self.points_var = ttk.StringVar(value=self.settings['points'])
         self.delay_var = ttk.StringVar(value=self.settings['delay_ms'])
         self.mode_var = ttk.StringVar(value='voc')
         self.sweepstyle_var = ttk.StringVar(value=self.settings['sweepstyle'])
-        self.ivpoint_var = ttk.StringVar(value='(,)')
+        self.ivpoint_var = ttk.StringVar(value='---')
 
-        self.isc_var = ttk.StringVar(value='0.000')
-        self.voc_var = ttk.StringVar(value='0.000')
-        self.impp_var = ttk.StringVar(value='0.000')
-        self.vmpp_var = ttk.StringVar(value='0.000')
-        self.ff_var = ttk.StringVar(value='0.000')
-        self.power_var = ttk.StringVar(value='0.000')
+        self.id_var = ttk.StringVar(value='CellID')
+        self.isc_var = ttk.StringVar(value='---')
+        self.voc_var = ttk.StringVar(value='---')
+        self.impp_var = ttk.StringVar(value='---')
+        self.vmpp_var = ttk.StringVar(value='---')
+        self.ff_var = ttk.StringVar(value='---')
+        self.power_var = ttk.StringVar(value='---')
 
+        self.ivparameters = {}
 
         self.create_menu()
         # header and labelframe option container
@@ -62,14 +62,14 @@ class MainApp(ttk.Frame):
         self.create_ivpoint_row()
 
         self.create_graph()
+        self.create_parameters_table('ID:', self.id_var)
         self.create_parameters_table('Isc:', self.isc_var)
         self.create_parameters_table('Voc:', self.voc_var)
         self.create_parameters_table('Impp:', self.impp_var)
         self.create_parameters_table('Vmpp:', self.vmpp_var)
-        self.create_parameters_table('Power:', self.power_var)
+        self.create_parameters_table('Pmax:', self.power_var)
         self.create_parameters_table('FF:', self.ff_var)
         self.create_save_button()
-
 
         self.draw_empty_figure()
         self.update_controls()
@@ -230,6 +230,13 @@ class MainApp(ttk.Frame):
         self.refresh_figure()
         self.is_active = False
         self.update_controls()
+        self.ivparameters = self.calculate_parameters()
+        self.isc_var.set('%.3f A' % self.ivparameters['isc'])
+        self.voc_var.set('%.3f V' % self.ivparameters['voc'])
+        self.impp_var.set('%.3f A' % self.ivparameters['impp'])
+        self.vmpp_var.set('%.3f V' % self.ivparameters['vmpp'])
+        self.power_var.set('%.3f W' % self.ivparameters['pmax'])
+        self.ff_var.set(f"{self.ivparameters['ff']:.2%}")
         self.save_btn.configure(state=ttk.NORMAL)
 
 
@@ -243,7 +250,7 @@ class MainApp(ttk.Frame):
         self.ivpoint_var.set('Voltage: %f V, Current: %f A, Power: %f W' % (voltage, current, voltage * current))
         self.is_active = False
         self.update_controls()
-        pass
+
 
 
     def system_connect(self):
@@ -291,6 +298,9 @@ class MainApp(ttk.Frame):
         self.fig.clear()
         ax = self.fig.add_subplot(111)
         ax.scatter(self.voltages, self.currents)
+        ax.set_xlabel('Voltage [V]')
+        ax.set_ylabel('Current [A]')
+        ax.set_title('IV Curve measurement')
         self.fig.canvas.draw_idle()
 
     def draw_empty_figure(self):
@@ -298,10 +308,30 @@ class MainApp(ttk.Frame):
         x = []
         ax = self.fig.add_subplot(111)
         ax.scatter(x, y)
+        ax.set_xlabel('Voltage [V]')
+        ax.set_ylabel('Current [A]')
+        ax.set_title('IV Curve measurement')
         self.fig.canvas.draw()
 
     def save_data(self):
-        pass
+        files = [('All Files', '*.*'),
+                 ('Text Document', '*.txt')]
+        filename = asksaveasfilename( initialfile=self.id_var.get() + '.txt', filetypes=files, defaultextension=files)
+        if filename:
+            with open(filename, "w") as f:
+                f.write('IV-Curve measurement\n')
+                f.write('Cell ID:\t%s\n' % self.id_var.get())
+                f.write('Date:\t%s\n' % datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S"))
+                f.write('Voc:\t%f V\n' % self.ivparameters['voc'])
+                f.write('Isc:\t%f A\n' % self.ivparameters['isc'])
+                f.write('Vmpp:\t%f V\n' % self.ivparameters['vmpp'])
+                f.write('Impp:\t%f A\n' % self.ivparameters['impp'])
+                f.write('Pmax:\t%f W\n' % self.ivparameters['pmax'])
+                f.write(f"Fill Factor:\t{self.ivparameters['ff']:.2%}\n")
+                f.write('\n')
+                f.write('Voltage[V]\tCurrent[A]\n')
+                for i in range(len(self.voltages)):
+                    f.write(f"{self.voltages[i]}\t{self.currents[i]}\n")
 
 
     def open_comport_window(self):
@@ -367,6 +397,19 @@ class MainApp(ttk.Frame):
 
         self.master.update()
 
+    def calculate_parameters(self):
+        (v, i) = rectify_iv_curve(self.voltages, self.currents)
+        p = v * i
+        d = {}
+        d['voc'] = v[-1]
+        d['isc'] = i[0]
+        index_max = np.argmax(p)
+        d['impp'] = i[index_max]
+        d['vmpp'] = v[index_max]
+        d['pmax'] = p[index_max]
+        d['ff'] = d['pmax'] / (d['voc'] * d['isc'])
+        return d
+
     def save_settings(self):
         self.settings['points'] = self.points_var.get()
         self.settings['delay_ms'] = self.delay_var.get()
@@ -390,6 +433,6 @@ class MainApp(ttk.Frame):
 
 if __name__ == '__main__':
 
-    app = ttk.Window("PVBlocks IV/MPP Control", "journal")
+    app = ttk.Window("PVBlocks IV/MPP Control", "sandstone")
     MainApp(app)
     app.mainloop()
