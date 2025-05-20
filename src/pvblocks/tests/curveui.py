@@ -270,7 +270,7 @@ class MainApp(ttk.Frame):
         ivpoint = self.iv_mpp.read_ivpoint()
         voltage = ivpoint.voltage
         current = ivpoint.current
-        self.ivpoint_var.set('Voltage: %f V, Current: %f A, Power: %f W' % (voltage, current, voltage * current))
+        self.ivpoint_var.set('V: %.3f V, I: %.4f A, P: %.4f W' % (voltage, current, voltage * current))
         self.is_active = False
         self.update_controls()
 

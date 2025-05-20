@@ -183,7 +183,7 @@ class IvMpp(PvBlock):
         voltage = 0.0;
         self.open()
         bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
-        self.uart.write(serial.to_bytes([2, constants.Rr1700Command.VoltageCommand, bytes[0], bytes[1], bytes[2], bytes[3]]))
+        self.uart.write(serial.to_bytes([2, constants.VOLTAGE_COMMAND, bytes[0], bytes[1], bytes[2], bytes[3]]))
         sleep(0.5)
         self.close()
 
@@ -191,7 +191,7 @@ class IvMpp(PvBlock):
         self.open()
         bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
         self.uart.write(
-            serial.to_bytes([2, constants.Rr1700Command.VoltageCommand, bytes[0], bytes[1], bytes[2], bytes[3]]))
+            serial.to_bytes([2, constants.VOLTAGE_COMMAND, bytes[0], bytes[1], bytes[2], bytes[3]]))
         sleep(0.5)
         self.close()
 
@@ -217,7 +217,6 @@ class IvMpp(PvBlock):
             status = self.read_statusbyte()
 
         self.close()
-
         points_measured = status.statusbytes[0]
         curve = self.transfer_curve(points_measured)
 
@@ -239,7 +238,6 @@ class IvMpp(PvBlock):
         voltages = []
         currents = []
 
-        print(availablebytes)
         for i in range(1, int((availablebytes - 1)/8)):
             index = (i * 8) + 1
             voltages.append(int.from_bytes(bts[index:(index+4)], "little") / 10000.0)
