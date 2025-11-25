@@ -48,22 +48,22 @@ print(iv_mpp.read_calibration())
 
 
 
-print('measure iv curve 200 points, 20ms')
-start_time = time.time()
-curve = iv_mpp.measure_ivcurve(200, 20, 0)
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"Elapsed Time: {elapsed_time} seconds")
-(v, i) = rectify_iv_curve(curve['voltages'], curve['currents'])
-p = v * i
-voc = v[-1]
-isc = i[0]
-index_max = np.argmax(p)
-impp = i[index_max]
-vmpp = v[index_max]
-pmax = p[index_max]
-ff = pmax/(voc * isc)
-pmax = p[index_max]
+#print('measure iv curve 200 points, 20ms')
+#start_time = time.time()
+#curve = iv_mpp.measure_ivcurve(200, 20, 0)
+#end_time = time.time()
+#elapsed_time = end_time - start_time
+#print(f"Elapsed Time: {elapsed_time} seconds")
+#(v, i) = rectify_iv_curve(curve['voltages'], curve['currents'])
+#p = v * i
+#voc = v[-1]
+#isc = i[0]
+#index_max = np.argmax(p)
+#impp = i[index_max]
+#vmpp = v[index_max]
+#pmax = p[index_max]
+#ff = pmax/(voc * isc)
+#pmax = p[index_max]
 
 
 pvblocks.close_system()

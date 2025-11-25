@@ -98,6 +98,8 @@ class PvBlocks(object):
         sleep(3)
 
 
+
+
 class PvBlock(object):
     def __init__(self, bytes, uart):
         self.bytes = bytes[0:8]
@@ -106,6 +108,21 @@ class PvBlock(object):
         self.Type = bytes[8]
         self.uart = uart
         self.node = 2
+
+
+    def reset_block(self):
+        self.uart.write(serial.to_bytes([1,
+                                         constants.RESET_MODULE,
+                                         self.bytes[0],
+                                         self.bytes[1],
+                                         self.bytes[2],
+                                         self.bytes[3],
+                                         self.bytes[4],
+                                         self.bytes[5],
+                                         self.bytes[6],
+                                         self.bytes[7]]))
+        sleep(0.5)
+
 
     def open(self):
         self.uart.write(serial.to_bytes([1,
@@ -139,6 +156,9 @@ class PvBlock(object):
         bts = ReadSerial(self.uart)
 
         return len(bts) == 3
+
+
+
 
 
     def read_statusbyte(self):
@@ -281,6 +301,33 @@ class IvMpp(PvBlock):
         bts = ReadSerial(self.uart)
         self.close()
         return bts[3:]
+
+    def write_voltage_calibration(self, A, B):
+        ba = list(bytearray(struct.pack("<f", A)))
+        self.write_eeprom(ba, 4)
+        ba = list(bytearray(struct.pack("<f", B)))
+        self.write_eeprom(ba, 8)
+        self.reset_block()
+        sleep(3)
+
+
+    def write_current_calibration(self,C, D):
+        ba = list(bytearray(struct.pack("<f", C)))
+        self.write_eeprom(ba, 12)
+        ba = list(bytearray(struct.pack("<f", D)))
+        self.write_eeprom(ba, 16)
+        self.reset_block()
+        sleep(3)
+
+
+    def write_eeprom(self, data, address):
+        bts = list(address.to_bytes(self.node, 'little'))
+        tx = [self.node, constants.WRITE_EEPROM_COMMAND, len(data), bts[0], bts[1]]
+
+        self.open()
+        self.uart.write(serial.to_bytes(tx + data))
+        self.close()
+        sleep(0.5)
 
 
 class IvMpp27(PvBlock):
