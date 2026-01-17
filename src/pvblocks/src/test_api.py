@@ -1,5 +1,4 @@
 
-
 from pvblocks import pvblocks_api
 
 print(pvblocks_api.show_version())
@@ -16,9 +15,31 @@ def DeleteAllSchedules():
         pvblocks.delete_schedule(s['id'])
 
 def RecreateSchedules():
-    pvblocks.create_schedule(1, False)
-    pvblocks.create_schedule(1, True)
-    pvblocks.create_schedule(5, True)
+    TemperatureScheduleId = pvblocks.create_schedule(1, False)['id']
+    IvPointScheduleId = pvblocks.create_schedule(1, True)['id']
+    IvCurveScheduleId = pvblocks.create_schedule(5, True)['id']
+    return (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId)
+
+
+def AssignTemperatureToSchedule(scheduleId):
+    for b in pvblocks.Blocks:
+        if b['type'] == "RR-1741":
+            pvblocks.add_command_to_schedule(scheduleId, b['id'], b['commands'][0])
+
+def AssignTIvCurveToSchedule(scheduleId):
+    for b in pvblocks.Blocks:
+        if b['type'] == "RR-1727":
+            for c in b['commands']:
+                if c['name'] == 'StartIvCurve':
+                    pvblocks.add_command_to_schedule(scheduleId, b['id'], c)
+
+
+def AssignTIvPointToSchedule(scheduleId):
+    for b in pvblocks.Blocks:
+        if b['type'] == "RR-1727":
+            for c in b['commands']:
+                if c['name'] == 'MeasureIvPoint':
+                    pvblocks.add_command_to_schedule(scheduleId, b['id'], c)
 
 
 def RecreateBlockLabels():
@@ -76,7 +97,10 @@ DeleteAllPvDevices()
 RecreateBlockLabels()
 RecreatePvDevicesAndAssign()
 DeleteAllSchedules()
-RecreateSchedules()
+(TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId) = RecreateSchedules()
+AssignTemperatureToSchedule(TemperatureScheduleId)
+AssignTIvCurveToSchedule(IvCurveScheduleId)
+AssignTIvPointToSchedule(IvPointScheduleId)
 
 
 

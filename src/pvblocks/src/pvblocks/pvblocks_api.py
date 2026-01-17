@@ -186,7 +186,7 @@ class PvBlocksApi(object):
 
             self.Blocks.append({ "label": b["label"], "id": b["id"],"guid": b['uniqueIdentifier'],
                                 "usbNr": usb, "boardNr": board, "channelNr": channel,
-                                             "type": b['type'], "sensors": sensors})
+                                             "type": b['type'], "sensors": sensors, 'commands': b['availableCommands']})
         return module_count
 
     def write_block_label(self, id, label):
@@ -228,7 +228,7 @@ class PvBlocksApi(object):
 
         endpoint = "/Pipeline"
         payload = {'description': description,  'daylightOnly': daylightOnly,  'cronTabs': [crontab]}
-        self.post(endpoint, payload, expected_response_code=201)
+        return self.post(endpoint, payload, expected_response_code=201)
 
     def delete_schedule(self, id):
         endpoint = '/Pipeline/{}'.format(id)
@@ -250,3 +250,9 @@ class PvBlocksApi(object):
         endpoint = '/Sensor/%d/attach/%d' % (sensor_id, pvdevice_id)
         payload = {}
         self.post(endpoint, payload, expected_response_code=201)
+
+    def add_command_to_schedule(self, schedule_id, blockId, command):
+        endpoint = '/Pipeline/%d/command' % (schedule_id)
+        payload = { 'pvBlockId': blockId,  'commandName': command['name'], 'parameters': command['defaultParameters'], 'withTrigger': command['defaultWithTrigger']}
+        self.post(endpoint, payload, expected_response_code=201)
+
