@@ -245,3 +245,8 @@ class PvBlocksApi(object):
                   'name': original['name'] }
         self.put(endpoint, sensor)
 
+
+    def attach_sensor_to_pvdevice(self, sensor_id, pvdevice_id):
+        endpoint = '/Sensor/%d/attach/%d' % (sensor_id, pvdevice_id)
+        payload = {}
+        self.post(endpoint, payload, expected_response_code=201)

@@ -1,5 +1,4 @@
-host = '100.105.180.7'
-apikey = 'c88d8c2c-9488-4e5f-82eb-e703feeb543a'
+
 
 from pvblocks import pvblocks_api
 
@@ -53,11 +52,33 @@ def RecreatePvDevices():
             label = "PvDevice-{}".format(channel)
             pvblocks.create_pvdevice(label)
 
+def RecreatePvDevicesAndAssign():
+    board_tc_sensor_ids = {}
+    for b in pvblocks.Blocks:
+        if b['type'] == "RR-1741":
+            board_tc_sensor_ids['boardNr{}'.format(b['boardNr'])] = [b['sensors'][0]['id'], b['sensors'][1]['id']]
 
+    for b in pvblocks.Blocks:
+        if b['type'] == "RR-1727":
+            channel = pvblocks_api.get_channel_number(b['usbNr'], b['boardNr'], b['channelNr'])
+            label = "PvDevice-{}".format(channel)
+            dev = pvblocks.create_pvdevice(label)
+            pvblocks.attach_sensor_to_pvdevice(b['sensors'][0]['id'] ,dev['id'])
+            pvblocks.attach_sensor_to_pvdevice(b['sensors'][1]['id'], dev['id'])
+            tc1_id = board_tc_sensor_ids['boardNr{}'.format(b['boardNr'])][0]
+            tc2_id = board_tc_sensor_ids['boardNr{}'.format(b['boardNr'])][1]
+            if b['channelNr'] < 4:
+                pvblocks.attach_sensor_to_pvdevice(tc1_id, dev['id'])
+            else:
+                pvblocks.attach_sensor_to_pvdevice(tc2_id, dev['id'])
+
+DeleteAllPvDevices()
 RecreateBlockLabels()
-# DeleteAllSchedules()
-# RecreateSchedules()
-# DeleteAllPvDevices()
+RecreatePvDevicesAndAssign()
+DeleteAllSchedules()
+RecreateSchedules()
+
+
 
 
 
