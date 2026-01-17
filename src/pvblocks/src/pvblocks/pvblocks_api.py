@@ -27,6 +27,19 @@ def GetPosition(guid_string):
 
     return (UsbNr, BlockNr-64, None)
 
+def create_rr1741_sensors(input_array):
+    result = []
+    for md in input_array:
+        sens = md['sensors'][0]
+        result.append({'id': sens['id'], 'name': sens['name'], 'description': sens['description']})
+    return result
+
+def create_rr1727_sensors(input_array):
+    result = []
+    for sens in input_array:
+        result.append({'id': sens['id'], 'name': sens['name'], 'description': sens['description']})
+    return result
+
 
 class PvBlocksApi(object):
     TYPES = {
@@ -68,16 +81,36 @@ class PvBlocksApi(object):
         else:
             return resp.json()
 
-    def post(self, endpoint, payload):
+    def post(self, endpoint, payload, expected_response_code=201):
         resp = requests.post(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token}, json=payload)
-        if resp.status_code != 200:
+        if resp.status_code != expected_response_code:
             self.token = self.get_token()
             resp = requests.post(
                 self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token}, json=payload)
-        if resp.status_code != 200:
+        if resp.status_code != expected_response_code:
             raise Exception('POST /' + endpoint + '{}'.format(resp.status_code))
         else:
             return resp.json()
+
+    def put(self, endpoint, payload, expected_response_code=204):
+        resp = requests.put(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token}, json=payload)
+        if resp.status_code != expected_response_code:
+            self.token = self.get_token()
+            resp = requests.put(
+                self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token}, json=payload)
+        if resp.status_code != expected_response_code:
+            raise Exception('PUT /' + endpoint + '{}'.format(resp.status_code))
+
+
+    def delete(self, endpoint, expected_response_code=204):
+        resp = requests.delete(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
+        if resp.status_code != expected_response_code:
+            self.token = self.get_token()
+            resp = requests.delete(
+                self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
+        if resp.status_code != expected_response_code:
+            raise Exception('DEL /' + endpoint + '{}'.format(resp.status_code))
+
 
 
     def get_api_version(self):
@@ -102,6 +135,33 @@ class PvBlocksApi(object):
         endpoint = '/PvDevice'
         return self.get(endpoint)
 
+    def create_pvdevice(self, label):
+        endpoint = '/PvDevice'
+        payload = {
+            "Name": label,
+            "Serial": "",
+            "Manufacturer": "",
+            "ManufacturerCode": "",
+            "Material": "",
+            "IsBiFacial": False,
+            "Voc": 0,
+            "Isc": 0,
+            "Power": 0,
+            "Alpha": 0,
+            "Beta": 0,
+            "TemperatureCoefficient": 0,
+            "Area": 0,
+            "CellCount": 0,
+            "StringCount": 0,
+            "TemperatureId": 0,
+            "IrradianceId": 0
+        }
+        return self.post(endpoint, payload)
+
+    def delete_pvdevice(self, id):
+        endpoint = '/PvDevice/{}'.format(id)
+        self.delete(endpoint)
+
     def get_pvblocks(self):
         endpoint = '/Block'
         return self.get(endpoint)
@@ -119,19 +179,20 @@ class PvBlocksApi(object):
         self.Blocks = []
         for b in blks:
             (usb, board, channel) = GetPosition(b['uniqueIdentifier'])
+            if b['type'] == 'RR-1727':
+                sensors = create_rr1727_sensors(b['measurementDevices'][0]['sensors'])
+            if b['type'] == 'RR-1741':
+                sensors = create_rr1741_sensors(b['measurementDevices'])
+
             self.Blocks.append({ "label": b["label"], "id": b["id"],"guid": b['uniqueIdentifier'],
                                 "usbNr": usb, "boardNr": board, "channelNr": channel,
-                                             "type": b['type']})
-
+                                             "type": b['type'], "sensors": sensors})
         return module_count
 
     def write_block_label(self, id, label):
         endpoint = '/Block/Label/{}'.format(id)
         payload = {'position': 0, 'label': label}
         return self.post(endpoint, payload)
-
-
-
 
     def write_rr1727_default_sweep(self, guid, points, integration_cycles, sweepType ):
         return
@@ -150,3 +211,37 @@ class PvBlocksApi(object):
 
     def write_rr1727_state(self, guid, state):
         return
+
+    def get_schedules(self):
+        endpoint = '/Pipeline'
+        return self.get(endpoint)
+
+    def create_schedule(self, interval='* * * * *', daylightOnly=False):
+        if interval == 1:
+            crontab = '* * * * *'
+        else:
+            crontab ='*/%d * * * *' % (interval)
+
+        description = 'Execute every %d minutes' % (interval)
+        if daylightOnly:
+            description += ' during daylight'
+
+        endpoint = "/Pipeline"
+        payload = {'description': description,  'daylightOnly': daylightOnly,  'cronTabs': [crontab]}
+        self.post(endpoint, payload, expected_response_code=201)
+
+    def delete_schedule(self, id):
+        endpoint = '/Pipeline/{}'.format(id)
+        self.delete(endpoint)
+
+    def update_sensor_description(self, id, label):
+        endpoint = '/Sensor/{}'.format(id)
+        original = self.get(endpoint)
+        sensor = {'description': label,
+                  'enabled': original['enabled'],
+                  'unit': original['unit'],
+                  'calibration': original['calibration'],
+                  'options': original['options'],
+                  'name': original['name'] }
+        self.put(endpoint, sensor)
+
