@@ -9,6 +9,25 @@ EndOfLine = '\r\n'
 def show_version():
     return VERSION
 
+def get_channel_number(usbNr, boardNr, channelNr):
+    return channelNr + 1  +  (boardNr*8) + usbNr*32
+
+def extract_hex_values(guid_string):
+    xx = guid_string[6:8]
+    yy = guid_string[21:23]
+    return int(xx, 16), int(yy, 16)
+
+
+# (usb nr, board nr, channel nr), with slotnr = None for a temperature sensor
+def GetPosition(guid_string):
+    (BlockNr, UsbNr) = extract_hex_values(guid_string)
+
+    if BlockNr > 100:
+        return (UsbNr, int((BlockNr -101)/8), (BlockNr -101)%8)
+
+    return (UsbNr, BlockNr-64, None)
+
+
 class PvBlocksApi(object):
     TYPES = {
         20: 'IV/MPP IV-Curve control and measure PvBlock',
@@ -38,6 +57,29 @@ class PvBlocksApi(object):
         else:
             return resp.json()['bearer']
 
+    def get(self, endpoint):
+        resp = requests.get(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
+        if resp.status_code != 200:
+            self.token = self.get_token()
+            resp = requests.get(
+                self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
+        if resp.status_code != 200:
+            raise Exception('GET /' + endpoint + '{}'.format(resp.status_code))
+        else:
+            return resp.json()
+
+    def post(self, endpoint, payload):
+        resp = requests.post(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token}, json=payload)
+        if resp.status_code != 200:
+            self.token = self.get_token()
+            resp = requests.post(
+                self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token}, json=payload)
+        if resp.status_code != 200:
+            raise Exception('POST /' + endpoint + '{}'.format(resp.status_code))
+        else:
+            return resp.json()
+
+
     def get_api_version(self):
         resp = requests.get(self._url('/info'))
         if resp.status_code != 200:
@@ -58,27 +100,11 @@ class PvBlocksApi(object):
 
     def get_pvdevices(self):
         endpoint = '/PvDevice'
-        resp = requests.get(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
-        if resp.status_code != 200:
-            self.token = self.get_token()
-            resp = requests.get(
-                self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
-        if resp.status_code != 200:
-            raise Exception('GET /' + endpoint + '{}'.format(resp.status_code))
-        else:
-            return resp.json()
+        return self.get(endpoint)
 
     def get_pvblocks(self):
         endpoint = '/Block'
-        resp = requests.get(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
-        if resp.status_code != 200:
-            self.token = self.get_token()
-            resp = requests.get(
-                self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
-        if resp.status_code != 200:
-            raise Exception('GET /' + endpoint + '{}'.format(resp.status_code))
-        else:
-            return resp.json()
+        return self.get(endpoint)
 
     def list_all_unique_identifiers(self):
         blocks = self.get_pvblocks()
@@ -92,7 +118,35 @@ class PvBlocksApi(object):
         module_count = len(blks)
         self.Blocks = []
         for b in blks:
-            self.Blocks.append({"guid": b['uniqueIdentifier'],
+            (usb, board, channel) = GetPosition(b['uniqueIdentifier'])
+            self.Blocks.append({ "label": b["label"], "id": b["id"],"guid": b['uniqueIdentifier'],
+                                "usbNr": usb, "boardNr": board, "channelNr": channel,
                                              "type": b['type']})
 
         return module_count
+
+    def write_block_label(self, id, label):
+        endpoint = '/Block/Label/{}'.format(id)
+        payload = {'position': 0, 'label': label}
+        return self.post(endpoint, payload)
+
+
+
+
+    def write_rr1727_default_sweep(self, guid, points, integration_cycles, sweepType ):
+        return
+
+    def read_rr1727_calibration_values(self, guid):
+        return
+
+    def write_rr1727_calibration_values(self, guid, A, B, C, D):
+        return
+
+    def write_rr1727_integration_time(self, guid, integration_time):
+        return
+
+    def read_rr1727_state(self, guid):
+        return
+
+    def write_rr1727_state(self, guid, state):
+        return
