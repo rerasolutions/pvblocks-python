@@ -192,7 +192,7 @@ class PvBlocksApi(object):
     def write_block_label(self, id, label):
         endpoint = '/Block/Label/{}'.format(id)
         payload = {'position': 0, 'label': label}
-        return self.post(endpoint, payload)
+        return self.post(endpoint, payload, expected_response_code=200)
 
     def write_rr1727_default_sweep(self, guid, points, integration_cycles, sweepType ):
         return

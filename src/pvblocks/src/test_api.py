@@ -29,11 +29,22 @@ def RecreateBlockLabels():
             label = "IVMPP-{}".format(channel)
             print(label)
             pvblocks.write_block_label(b['id'], label)
+            for s in b['sensors']:
+                if s['name'] == 'ivcurve':
+                    pvblocks.update_sensor_description(s['id'], "curve-{}".format(channel))
+                else:
+                    pvblocks.update_sensor_description(s['id'], "ivpoint-{}".format(channel))
+
         if b['type'] == "RR-1741":
             location = 4* b['usbNr'] + b['boardNr'] + 1
             label = "IVTEMP-{}".format(location)
             print(label)
             pvblocks.write_block_label(b['id'], label)
+            cnt = 1
+            for s in b['sensors']:
+                pvblocks.update_sensor_description(s['id'], "TC-{}".format(cnt))
+                cnt = cnt + 1
+
 
 def RecreatePvDevices():
     for b in pvblocks.Blocks:
@@ -43,7 +54,7 @@ def RecreatePvDevices():
             pvblocks.create_pvdevice(label)
 
 
-# RecreateBlockLabels()
+RecreateBlockLabels()
 # DeleteAllSchedules()
 # RecreateSchedules()
 # DeleteAllPvDevices()
