@@ -227,10 +227,6 @@ class PvBlocksApi(object):
         self.post(endpoint, payload, expected_response_code=200, json_response=False)
         self.reset_block(guid)
 
-
-        def write_rr1727_integration_time(self, guid, integration_time):
-            return
-
     def get_schedules(self):
         endpoint = '/Pipeline'
         return self.get(endpoint)
@@ -298,4 +294,52 @@ class PvBlocksApi(object):
             payload = {'guid': guid, 'state': state, 'vbias': voltageBias}
             self.put(endpoint, payload, expected_response_code=201)
 
+    def write_rr1727_integration_time(self, guid, integration_time):
+        if integration_time not in [1,4,9,15]:
+            raise ValueError("Integration time must be in [1,4,9,15]")
 
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'WriteEeprom', 'Parameters': {'data': str(integration_time), 'address': 116}}
+        self.post(endpoint, payload, expected_response_code=200)
+        self.reset_block(guid)
+
+    def read_rr1727_integration_time(self, guid):
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'ReadEeprom', 'Parameters': {'length': 1, 'address': 116}}
+        return self.post(endpoint, payload, expected_response_code=200)['1'][0]
+
+    def read_rr1727_mpp_values(self, guid):
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'ReadFloatEeprom', 'Parameters': {'count': 4, 'address': 64}}
+        return self.post(endpoint, payload, expected_response_code=200)['1']
+
+    def write_rr1727_mpp_values(self, guid, p1, p2, p3, p4):
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'WriteFloatEeprom', 'Parameters': {'flt': p1, 'address': 64}}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+        payload = {'CommandName': 'WriteFloatEeprom', 'Parameters': {'flt': p2, 'address': 68}}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+        payload = {'CommandName': 'WriteFloatEeprom', 'Parameters': {'flt': p3, 'address': 72}}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+        payload = {'CommandName': 'WriteFloatEeprom', 'Parameters': {'flt': p4, 'address': 76}}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+        endpoint = '/Hardware/%s/refresh-eeprom' % (guid)
+        self.get(endpoint, expected_response_code=204, json_response=False)
+
+    def read_rr1741_temperatures(self, guid):
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'GetTemperatures', 'Parameters': {'direct': True}}
+        result = self.post(endpoint, payload, expected_response_code=200)
+        return [result['1']['temperature'], result['2']['temperature']]
+
+    def read_rr1727_ivpoint(self, guid):
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'MeasureDirectIvPoint'}
+        result = self.post(endpoint, payload, expected_response_code=200)
+        return [result['1']['ivpoint']['i'], result['1']['ivpoint']['v']]
+
+    def sweep_rr1727_ivcurve(self, guid, points, integration_cycles, sweepType):
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'StartIvCurve', 'Parameters': {'points': points, 'delay': integration_cycles, 'sweepstyle': sweepType}}
+        result = self.post(endpoint, payload, expected_response_code=200)
+        return {'Voltages': result['1']['Voltages'], 'Currents': result['1']['Currents']}

@@ -1,11 +1,8 @@
-
-
 from pvblocks import pvblocks_api
 from pvblocks import constants
 print(pvblocks_api.show_version())
 pvblocks = pvblocks_api.PvBlocksApi(host ,apikey)
 pvblocks.Init()
-
 
 def DeleteAllPvDevices():
     for s in pvblocks.get_pvdevices():
@@ -21,7 +18,6 @@ def RecreateSchedules():
     IvCurveScheduleId = pvblocks.create_schedule(5, True)['id']
     return (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId)
 
-
 def AssignTemperatureToSchedule(scheduleId):
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1741":
@@ -34,14 +30,12 @@ def AssignTIvCurveToSchedule(scheduleId):
                 if c['name'] == 'StartIvCurve':
                     pvblocks.add_command_to_schedule(scheduleId, b['id'], c)
 
-
 def AssignTIvPointToSchedule(scheduleId):
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1727":
             for c in b['commands']:
                 if c['name'] == 'MeasureIvPoint':
                     pvblocks.add_command_to_schedule(scheduleId, b['id'], c)
-
 
 def RecreateBlockLabels():
     for b in pvblocks.Blocks:
@@ -95,21 +89,46 @@ def RecreatePvDevicesAndAssign():
                 pvblocks.attach_sensor_to_pvdevice(tc2_id, dev['id'])
 
 
-def SetStateForAllRr1727(state, voltageBias = 0):
-    for b in pvblocks.Blocks:
+def SetStateForAllRr1727(state, voltageBias = 0, block_list = None):
+    if block_list is None:
+        block_list = pvblocks.Blocks
+
+    for b in block_list:
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_state(b['guid'], state, voltageBias)
 
-def SetSweepParametersForAllRr1727(points, integration_cycles, sweep_type):
-    for b in pvblocks.Blocks:
+def SetSweepParametersForAllRr1727(points, integration_cycles, sweep_type, block_list = None):
+    if block_list is None:
+        block_list = pvblocks.Blocks
+
+    for b in block_list:
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_default_sweep(b['id'], points, integration_cycles, sweep_type)
 
-def SetCalibrationValuesForAllRr1727(A, B, C, D):
-    for b in pvblocks.Blocks:
+def SetCalibrationValuesForAllRr1727(A, B, C, D, block_list = None):
+    if block_list is None:
+        block_list = pvblocks.Blocks
+
+    for b in block_list:
         print(b['label'])
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_calibration_values(b['guid'], A, B, C, D)
+
+def SetMppParametersForAllRr1727(p1, p2, p3, p4, block_list = None):
+    if block_list is None:
+        block_list = pvblocks.Blocks
+
+    for b in block_list:
+        print(b['label'])
+        if b['type'] == "RR-1727":
+            pvblocks.write_rr1727_mpp_values(b['guid'], p1, p2, p3, p4)
+
+def ShowBlocks(block_list = None):
+    if block_list is None:
+        block_list = pvblocks.Blocks
+
+    for b in block_list:
+        print(b['label'])
 
 # DeleteAllPvDevices()
 # RecreateBlockLabels()
@@ -121,8 +140,5 @@ def SetCalibrationValuesForAllRr1727(A, B, C, D):
 # AssignTIvPointToSchedule(IvPointScheduleId)
 # SetStateForAllRr1727(constants.VOC)
 # SetSweepParametersForAllRr1727(150, 5, constants.SWEEP_ISC_TO_VOC)
-SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
-
-
-
-
+# SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
+# SetMppParametersForAllRr1727(0.75, 0, 0.01, 100)
