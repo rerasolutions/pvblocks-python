@@ -1,4 +1,5 @@
 
+
 from pvblocks import pvblocks_api
 
 print(pvblocks_api.show_version())
@@ -51,7 +52,7 @@ def RecreateBlockLabels():
             pvblocks.write_block_label(b['id'], label)
             for s in b['sensors']:
                 if s['name'] == 'ivcurve':
-                    pvblocks.update_sensor_description(s['id'], "curve-{}".format(channel))
+                    pvblocks.update_sensor_description(s['id'], "ivcurve-{}".format(channel))
                 else:
                     pvblocks.update_sensor_description(s['id'], "ivpoint-{}".format(channel))
 
