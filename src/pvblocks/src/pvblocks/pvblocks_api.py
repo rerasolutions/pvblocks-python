@@ -294,6 +294,12 @@ class PvBlocksApi(object):
             payload = {'guid': guid, 'state': state, 'vbias': voltageBias}
             self.put(endpoint, payload, expected_response_code=201)
 
+    def ApplyVoc(self, guid):
+        self.write_rr1727_state(guid, 0, store=False)
+
+    def ApplyIsc(self, guid):
+        self.write_rr1727_state(guid, 1, store=False)
+
     def write_rr1727_integration_time(self, guid, integration_time):
         if integration_time not in [1,4,9,15]:
             raise ValueError("Integration time must be in [1,4,9,15]")
