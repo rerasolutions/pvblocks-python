@@ -1,3 +1,7 @@
+
+host = '100.105.180.7'
+apikey = 'c88d8c2c-9488-4e5f-82eb-e703feeb543a'
+
 from pvblocks import pvblocks_api
 from pvblocks import constants
 print(pvblocks_api.show_version())
@@ -14,8 +18,8 @@ def DeleteAllSchedules():
 
 def RecreateSchedules():
     TemperatureScheduleId = pvblocks.create_schedule(1, False)['id']
-    IvPointScheduleId = pvblocks.create_schedule(1, True)['id']
-    IvCurveScheduleId = pvblocks.create_schedule(5, True)['id']
+    IvPointScheduleId = pvblocks.create_schedule(1, False)['id']
+    IvCurveScheduleId = pvblocks.create_schedule(5, False)['id']
     return (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId)
 
 def AssignTemperatureToSchedule(scheduleId):
@@ -138,7 +142,7 @@ def ShowBlocks(block_list = None):
 # AssignTemperatureToSchedule(TemperatureScheduleId)
 # AssignTIvCurveToSchedule(IvCurveScheduleId)
 # AssignTIvPointToSchedule(IvPointScheduleId)
-# SetStateForAllRr1727(constants.VOC)
-# SetSweepParametersForAllRr1727(150, 5, constants.SWEEP_ISC_TO_VOC)
+# SetStateForAllRr1727(constants.MPP)
+# SetSweepParametersForAllRr1727(200, 4, constants.SWEEP_ISC_TO_VOC)
 # SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
 # SetMppParametersForAllRr1727(0.75, 0, 0.01, 100)

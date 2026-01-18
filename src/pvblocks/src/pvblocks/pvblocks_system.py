@@ -333,7 +333,7 @@ class IvMpp(PvBlock):
 class IvMpp27(PvBlock):
     def __init__(self, bytes, uart):
         super().__init__(bytes, uart)
-        self.node = bytes[1]
+        self.node = bytes[0]
 
     def reset(self):
         self.open()
