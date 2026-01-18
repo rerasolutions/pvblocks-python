@@ -1,5 +1,4 @@
-host = '100.105.180.7'
-apikey = 'c88d8c2c-9488-4e5f-82eb-e703feeb543a'
+
 
 from pvblocks import pvblocks_api
 from pvblocks import constants
