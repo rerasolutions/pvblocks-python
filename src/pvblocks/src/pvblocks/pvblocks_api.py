@@ -249,11 +249,11 @@ class PvBlocksApi(object):
         endpoint = '/Pipeline/{}'.format(id)
         self.delete(endpoint)
 
-    def enable_schedule(self):
+    def enable_scheduler(self):
         endpoint = '/Pipeline/enable'
         self.post(endpoint, {}, expected_response_code=204, json_response=False)
 
-    def disable_schedule(self):
+    def disable_scheduler(self):
         endpoint = '/Pipeline/disable'
         self.post(endpoint, {}, expected_response_code=204, json_response=False)
 
