@@ -70,18 +70,20 @@ class PvBlocksApi(object):
         else:
             return resp.json()['bearer']
 
-    def get(self, endpoint):
+    def get(self, endpoint, expected_response_code=200, json_response=True):
         resp = requests.get(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
-        if resp.status_code != 200:
+        if resp.status_code != expected_response_code:
             self.token = self.get_token()
             resp = requests.get(
                 self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token})
-        if resp.status_code != 200:
+        if resp.status_code != expected_response_code:
             raise Exception('GET /' + endpoint + '{}'.format(resp.status_code))
         else:
-            return resp.json()
-
-    def post(self, endpoint, payload, expected_response_code=201):
+            if json_response:
+                return resp.json()
+            else:
+                pass
+    def post(self, endpoint, payload, expected_response_code=201, json_response=True):
         resp = requests.post(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token}, json=payload)
         if resp.status_code != expected_response_code:
             self.token = self.get_token()
@@ -90,7 +92,10 @@ class PvBlocksApi(object):
         if resp.status_code != expected_response_code:
             raise Exception('POST /' + endpoint + '{}'.format(resp.status_code))
         else:
-            return resp.json()
+            if json_response:
+                return resp.json()
+            else:
+                pass
 
     def put(self, endpoint, payload, expected_response_code=204):
         resp = requests.put(self._url(endpoint), headers={'Authorization': 'Bearer ' + self.token}, json=payload)
@@ -189,28 +194,42 @@ class PvBlocksApi(object):
                                              "type": b['type'], "sensors": sensors, 'commands': b['availableCommands']})
         return module_count
 
+    def reset_block(self, guid):
+        endpoint = '/Hardware/%s/reset' % (guid)
+        return self.get(endpoint, expected_response_code=204, json_response=False)
+
     def write_block_label(self, id, label):
         endpoint = '/Block/Label/{}'.format(id)
         payload = {'position': 0, 'label': label}
         return self.post(endpoint, payload, expected_response_code=200)
 
-    def write_rr1727_default_sweep(self, guid, points, integration_cycles, sweepType ):
-        return
+
+    def write_rr1727_default_sweep(self, id, points, integration_cycles, sweepType ):
+        endpoint = '/Command/updateIvCurveParameters/%d' % (id)
+        payload = {'points': points, 'delay': integration_cycles, 'sweepstyle': sweepType}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+
 
     def read_rr1727_calibration_values(self, guid):
-        return
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'ReadFloatEeprom', 'Parameters': {'count': 4, 'address': 4}}
+        return self.post(endpoint, payload, expected_response_code=200)['1']
 
     def write_rr1727_calibration_values(self, guid, A, B, C, D):
-        return
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'WriteFloatEeprom', 'Parameters': {'flt': A, 'address': 4}}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+        payload = {'CommandName': 'WriteFloatEeprom', 'Parameters': {'flt': B, 'address': 8}}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+        payload = {'CommandName': 'WriteFloatEeprom', 'Parameters': {'flt': C, 'address': 12}}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+        payload = {'CommandName': 'WriteFloatEeprom', 'Parameters': {'flt': D, 'address': 16}}
+        self.post(endpoint, payload, expected_response_code=200, json_response=False)
+        self.reset_block(guid)
 
-    def write_rr1727_integration_time(self, guid, integration_time):
-        return
 
-    def read_rr1727_state(self, guid):
-        return
-
-    def write_rr1727_state(self, guid, state):
-        return
+        def write_rr1727_integration_time(self, guid, integration_time):
+            return
 
     def get_schedules(self):
         endpoint = '/Pipeline'
@@ -234,6 +253,14 @@ class PvBlocksApi(object):
         endpoint = '/Pipeline/{}'.format(id)
         self.delete(endpoint)
 
+    def enable_schedule(self):
+        endpoint = '/Pipeline/enable'
+        self.post(endpoint, {}, expected_response_code=204, json_response=False)
+
+    def disable_schedule(self):
+        endpoint = '/Pipeline/disable'
+        self.post(endpoint, {}, expected_response_code=204, json_response=False)
+
     def update_sensor_description(self, id, label):
         endpoint = '/Sensor/{}'.format(id)
         original = self.get(endpoint)
@@ -255,4 +282,20 @@ class PvBlocksApi(object):
         endpoint = '/Pipeline/%d/command' % (schedule_id)
         payload = { 'pvBlockId': blockId,  'commandName': command['name'], 'parameters': command['defaultParameters'], 'withTrigger': command['defaultWithTrigger']}
         self.post(endpoint, payload, expected_response_code=201)
+
+    # State definitions:
+    # Voc = 0,
+    # Isc = 1,
+    # Mpp = 2,
+    # Vbias = 3
+
+    def write_rr1727_state(self, guid, state, voltageBias=0, store=True):
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'ApplyState', 'Parameters': {'state': state, 'voltageBias': voltageBias}}
+        self.post(endpoint, payload, expected_response_code=200)
+        if store:
+            endpoint = '/Hardware/%s/storeIvMppState' % (guid)
+            payload = {'guid': guid, 'state': state, 'vbias': voltageBias}
+            self.put(endpoint, payload, expected_response_code=201)
+
 

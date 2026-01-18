@@ -1,7 +1,8 @@
-
+host = '100.105.180.7'
+apikey = 'c88d8c2c-9488-4e5f-82eb-e703feeb543a'
 
 from pvblocks import pvblocks_api
-
+from pvblocks import constants
 print(pvblocks_api.show_version())
 pvblocks = pvblocks_api.PvBlocksApi(host ,apikey)
 pvblocks.Init()
@@ -94,15 +95,34 @@ def RecreatePvDevicesAndAssign():
             else:
                 pvblocks.attach_sensor_to_pvdevice(tc2_id, dev['id'])
 
-DeleteAllPvDevices()
-RecreateBlockLabels()
-RecreatePvDevicesAndAssign()
-DeleteAllSchedules()
-(TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId) = RecreateSchedules()
-AssignTemperatureToSchedule(TemperatureScheduleId)
-AssignTIvCurveToSchedule(IvCurveScheduleId)
-AssignTIvPointToSchedule(IvPointScheduleId)
 
+def SetStateForAllRr1727(state, voltageBias = 0):
+    for b in pvblocks.Blocks:
+        if b['type'] == "RR-1727":
+            pvblocks.write_rr1727_state(b['guid'], state, voltageBias)
+
+def SetSweepParametersForAllRr1727(points, integration_cycles, sweep_type):
+    for b in pvblocks.Blocks:
+        if b['type'] == "RR-1727":
+            pvblocks.write_rr1727_default_sweep(b['id'], points, integration_cycles, sweep_type)
+
+def SetCalibrationValuesForAllRr1727(A, B, C, D):
+    for b in pvblocks.Blocks:
+        print(b['label'])
+        if b['type'] == "RR-1727":
+            pvblocks.write_rr1727_calibration_values(b['guid'], A, B, C, D)
+
+# DeleteAllPvDevices()
+# RecreateBlockLabels()
+# RecreatePvDevicesAndAssign()
+# DeleteAllSchedules()
+# (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId) = RecreateSchedules()
+# AssignTemperatureToSchedule(TemperatureScheduleId)
+# AssignTIvCurveToSchedule(IvCurveScheduleId)
+# AssignTIvPointToSchedule(IvPointScheduleId)
+# SetStateForAllRr1727(constants.VOC)
+# SetSweepParametersForAllRr1727(150, 5, constants.SWEEP_ISC_TO_VOC)
+SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
 
 
 
