@@ -135,6 +135,7 @@ def ShowBlocks(block_list = None):
     for b in block_list:
         print(b['label'])
 
+
 # DeleteAllPvDevices()
 # RecreateBlockLabels()
 # RecreatePvDevicesAndAssign()
