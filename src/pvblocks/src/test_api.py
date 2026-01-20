@@ -19,7 +19,7 @@ def DeleteAllSchedules():
 def RecreateSchedules():
     TemperatureScheduleId = pvblocks.create_schedule(1, False)['id']
     IvPointScheduleId = pvblocks.create_schedule(1, False)['id']
-    IvCurveScheduleId = pvblocks.create_schedule(5, False)['id']
+    IvCurveScheduleId = pvblocks.create_schedule(2, False)['id']
     return (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId)
 
 def AssignTemperatureToSchedule(scheduleId):
@@ -61,8 +61,9 @@ def RecreateBlockLabels():
             pvblocks.write_block_label(b['id'], label)
             cnt = 1
             for s in b['sensors']:
-                pvblocks.update_sensor_description(s['id'], "TC-{}".format(cnt))
+                pvblocks.update_sensor_description(s['id'], "TC-%d-%d" % (location, cnt))
                 cnt = cnt + 1
+
 
 
 def RecreatePvDevices():
@@ -144,5 +145,5 @@ def ShowBlocks(block_list = None):
 # AssignTIvPointToSchedule(IvPointScheduleId)
 # SetStateForAllRr1727(constants.MPP)
 # SetSweepParametersForAllRr1727(200, 4, constants.SWEEP_ISC_TO_VOC)
-# SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
-# SetMppParametersForAllRr1727(0.75, 0, 0.01, 100)
+#SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
+#SetMppParametersForAllRr1727(0.75, 0, 0.01, 100)

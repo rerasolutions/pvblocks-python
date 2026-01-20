@@ -183,6 +183,8 @@ class PvBlocksApi(object):
         module_count = len(blks)
         self.Blocks = []
         for b in blks:
+            if not(b['online']):
+                continue
             (usb, board, channel) = GetPosition(b['uniqueIdentifier'])
             if b['type'] == 'RR-1727':
                 sensors = create_rr1727_sensors(b['measurementDevices'][0]['sensors'])
@@ -349,3 +351,13 @@ class PvBlocksApi(object):
         payload = {'CommandName': 'StartIvCurve', 'Parameters': {'points': points, 'delay': integration_cycles, 'sweepstyle': sweepType}}
         result = self.post(endpoint, payload, expected_response_code=200)
         return {'Voltages': result['1']['Voltages'], 'Currents': result['1']['Currents']}
+
+    def sweep_rr1727_ivcurve(self, guid, points, integration_cycles, sweepType):
+        endpoint = '/Hardware/%s/sendCommand' % (guid)
+        payload = {'CommandName': 'StartIvCurve', 'Parameters': {'points': points, 'delay': integration_cycles, 'sweepstyle': sweepType}}
+        result = self.post(endpoint, payload, expected_response_code=200)
+        return {'Voltages': result['1']['Voltages'], 'Currents': result['1']['Currents']}
+
+    def send_trigger(self):
+        endpoint = '/Hardware/trigger'
+        self.post(endpoint, {}, expected_response_code=200, json_response=False)
