@@ -145,5 +145,5 @@ def ShowBlocks(block_list = None):
 # AssignTIvPointToSchedule(IvPointScheduleId)
 # SetStateForAllRr1727(constants.MPP)
 # SetSweepParametersForAllRr1727(200, 4, constants.SWEEP_ISC_TO_VOC)
-#SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
-#SetMppParametersForAllRr1727(0.75, 0, 0.01, 100)
+# SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
+# SetMppParametersForAllRr1727(0.75, 0, 0.01, 100)

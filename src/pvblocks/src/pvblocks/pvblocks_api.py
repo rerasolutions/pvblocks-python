@@ -34,6 +34,12 @@ def create_rr1741_sensors(input_array):
         result.append({'id': sens['id'], 'name': sens['name'], 'description': sens['description']})
     return result
 
+def create_rr1720_sensors(input_array):
+    result = []
+    for sens in input_array:
+        result.append({'id': sens['id'], 'name': sens['name'], 'description': sens['description']})
+    return result
+
 def create_rr1727_sensors(input_array):
     result = []
     for sens in input_array:
@@ -133,6 +139,7 @@ class PvBlocksApi(object):
         if self.Online():
             count = self.scan_blocks()
             print('Scanned {} blocks'.format(count))
+            print('Found {} blocks to be online'.format(len(self.Blocks)))
         else:
             print('System not online')
 
@@ -186,6 +193,8 @@ class PvBlocksApi(object):
             if not(b['online']):
                 continue
             (usb, board, channel) = GetPosition(b['uniqueIdentifier'])
+            if b['type'] == 'RR-1720':
+                sensors = create_rr1720_sensors(b['measurementDevices'][0]['sensors'])
             if b['type'] == 'RR-1727':
                 sensors = create_rr1727_sensors(b['measurementDevices'][0]['sensors'])
             if b['type'] == 'RR-1741':
@@ -345,12 +354,6 @@ class PvBlocksApi(object):
         payload = {'CommandName': 'MeasureDirectIvPoint'}
         result = self.post(endpoint, payload, expected_response_code=200)
         return [result['1']['ivpoint']['i'], result['1']['ivpoint']['v']]
-
-    def sweep_rr1727_ivcurve(self, guid, points, integration_cycles, sweepType):
-        endpoint = '/Hardware/%s/sendCommand' % (guid)
-        payload = {'CommandName': 'StartIvCurve', 'Parameters': {'points': points, 'delay': integration_cycles, 'sweepstyle': sweepType}}
-        result = self.post(endpoint, payload, expected_response_code=200)
-        return {'Voltages': result['1']['Voltages'], 'Currents': result['1']['Currents']}
 
     def sweep_rr1727_ivcurve(self, guid, points, integration_cycles, sweepType):
         endpoint = '/Hardware/%s/sendCommand' % (guid)
