@@ -123,6 +123,24 @@ class PvBlocksApi(object):
             raise Exception('DEL /' + endpoint + '{}'.format(resp.status_code))
 
 
+    def get_activationkey(self, user, pwd):
+        try:
+            b = self.post('/authentication/Login', {"username": user, "password": pwd},
+                              expected_response_code=200)
+        except:
+            return (False, 'Wrong username password')
+
+        endpoint = '/authentication/ApiKey/activeKey'
+        try:
+            resp = requests.get(self._url(endpoint), headers={'Authorization': 'Bearer ' + b['bearer']})
+
+            if resp.status_code != 200:
+                return (False, 'Wrong username password')
+            else:
+                return (True, resp.json())
+        except:
+            return (False, 'Wrong username password')
+
 
     def get_api_version(self):
         resp = requests.get(self._url('/info'))
