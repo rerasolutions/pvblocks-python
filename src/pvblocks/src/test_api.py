@@ -1,12 +1,19 @@
 
-host = ''
-apikey = ''
+host = '100.105.180.7'
+apikey = 'c385dbc2-2f89-4e97-8ecb-4a203adaec02'
 
+import sys
 from pvblocks import pvblocks_api
 from pvblocks import constants
 print(pvblocks_api.show_version())
 pvblocks = pvblocks_api.PvBlocksApi(host ,apikey)
 pvblocks.Init()
+user_input = input(f"Connected to {pvblocks.get_system_info()['name']}, Enter to continue, or 'quit':")
+
+if user_input.lower() == 'quit':
+    print("Quitting...")
+    sys.exit() # or 'break' to exit the loop
+
 
 def DeleteAllPvDevices():
     for s in pvblocks.get_pvdevices():
@@ -64,7 +71,30 @@ def RecreateBlockLabels():
                 pvblocks.update_sensor_description(s['id'], "TC-%d-%d" % (location, cnt))
                 cnt = cnt + 1
 
+def RecreateBlockLabels_FS(system_number = 1):
+    for b in pvblocks.Blocks:
+        if b['type'] == "RR-1727":
+            channel = pvblocks_api.get_channel_number(b['usbNr'], b['boardNr'], b['channelNr'])
+            label = f"MS{system_number}.{b['usbNr']*(4-b['boardNr'])}"
+            print(f"{channel}: {label}")
+            #pvblocks.write_block_label(b['id'], label)
+            for s in b['sensors']:
+                if s['name'] == 'ivcurve':
+                    pass
+                    #pvblocks.update_sensor_description(s['id'], "ivcurve-{}".format(channel))
+                else:
+                    pass
+                    #pvblocks.update_sensor_description(s['id'], "ivpoint-{}".format(channel))
 
+        if b['type'] == "RR-1741":
+            location = 4* b['usbNr'] + b['boardNr'] + 1
+            label = "IVTEMP-{}".format(location)
+            #print(label)
+            #pvblocks.write_block_label(b['id'], label)
+            cnt = 1
+            for s in b['sensors']:
+                #pvblocks.update_sensor_description(s['id'], "TC-%d-%d" % (location, cnt))
+                cnt = cnt + 1
 
 def RecreatePvDevices():
     for b in pvblocks.Blocks:
@@ -94,50 +124,75 @@ def RecreatePvDevicesAndAssign():
                 pvblocks.attach_sensor_to_pvdevice(tc2_id, dev['id'])
 
 
-def SetStateForAllRr1727(state, voltageBias = 0, block_list = None):
+def SetStateForAllRr1727(state, voltageBias = 0, block_list = None, skip_labels = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
+        if b['label'] in skip_labels:
+            continue
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_state(b['guid'], state, voltageBias)
 
-def SetSweepParametersForAllRr1727(points, integration_cycles, sweep_type, block_list = None):
+def SetSweepParametersForAllRr1727(points, integration_cycles, sweep_type, block_list = None, skip_labels = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
+        if b['label'] in skip_labels:
+            continue
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_default_sweep(b['id'], points, integration_cycles, sweep_type)
 
-def SetCalibrationValuesForAllRr1727(A, B, C, D, block_list = None):
+def SetCalibrationValuesForAllRr1727(A, B, C, D, block_list = None, skip_labels = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
+        if b['label'] in skip_labels:
+            continue
         print(b['label'])
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_calibration_values(b['guid'], A, B, C, D)
 
-def SetMppParametersForAllRr1727(p1, p2, p3, p4, block_list = None):
+def GetAllRr1727CalibrationValues(block_list = None, skip_labels = []):
+    if block_list is None:
+        block_list = pvblocks.Blocks
+
+    cal_values = []
+    for b in block_list:
+        if b['label'] in skip_labels:
+            continue
+        if b['type'] == "RR-1727":
+            cal_values.append((b['guid'], b['label'], pvblocks.read_rr1727_calibration_values(b['guid'])))
+            print(f'Reading {b['label']}')
+
+    keys = ['guid', 'label', 'calibration_values']
+    return dict(zip(keys, cal_values))
+
+def SetMppParametersForAllRr1727(p1, p2, p3, p4, block_list = None, skip_labels = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
+        if b['label'] in skip_labels:
+            continue
         print(b['label'])
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_mpp_values(b['guid'], p1, p2, p3, p4)
 
-def ShowBlocks(block_list = None):
+def ShowBlocks(block_list = None, skip_labels = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
+        if b['label'] in skip_labels:
+            continue
         print(b['label'])
 
-
-# DeleteAllPvDevices()
-# RecreateBlockLabels()
+#DeleteAllPvDevices()
+#RecreateBlockLabels()
+#RecreateBlockLabels_FS(1)
 # RecreatePvDevicesAndAssign()
 # DeleteAllSchedules()
 # (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId) = RecreateSchedules()

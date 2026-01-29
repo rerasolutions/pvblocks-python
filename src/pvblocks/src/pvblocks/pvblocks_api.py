@@ -205,6 +205,10 @@ class PvBlocksApi(object):
                                              "type": b['type'], "sensors": sensors, 'commands': b['availableCommands']})
         return module_count
 
+    def get_system_info(self):
+        endpoint = '/Info/site'
+        return self.get(endpoint)
+
     def reset_block(self, guid):
         endpoint = '/Hardware/%s/reset' % (guid)
         return self.get(endpoint, expected_response_code=204, json_response=False)
