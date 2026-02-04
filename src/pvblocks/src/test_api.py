@@ -2,6 +2,9 @@
 host = '100.105.180.7'
 apikey = 'c385dbc2-2f89-4e97-8ecb-4a203adaec02'
 
+# KAST1
+skip_guids = ["00000071-0000-0000-0000-000000000000"]
+
 import sys
 from pvblocks import pvblocks_api
 from pvblocks import constants
@@ -14,9 +17,9 @@ if user_input.lower() == 'quit':
     print("Quitting...")
     sys.exit() # or 'break' to exit the loop
 
-
 def DeleteAllPvDevices():
     for s in pvblocks.get_pvdevices():
+        print(f"Delete: { s['label']}")
         pvblocks.delete_pvdevice(s['id'])
 
 def DeleteAllSchedules():
@@ -75,39 +78,40 @@ def RecreateBlockLabels_FS(system_number = 1):
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1727":
             channel = pvblocks_api.get_channel_number(b['usbNr'], b['boardNr'], b['channelNr'])
-            label = f"MS{system_number}.{b['usbNr']*(4-b['boardNr'])}"
+            label = f"MS{system_number}.{4*b['usbNr']+(4-b['boardNr'])}.{b['channelNr']+1}"
             print(f"{channel}: {label}")
-            #pvblocks.write_block_label(b['id'], label)
+            pvblocks.write_block_label(b['id'], label)
             for s in b['sensors']:
                 if s['name'] == 'ivcurve':
                     pass
-                    #pvblocks.update_sensor_description(s['id'], "ivcurve-{}".format(channel))
+                    pvblocks.update_sensor_description(s['id'], "ivcurve-%s" % (label))
                 else:
                     pass
-                    #pvblocks.update_sensor_description(s['id'], "ivpoint-{}".format(channel))
+                    pvblocks.update_sensor_description(s['id'], "ivpoint-%s" % (label))
 
         if b['type'] == "RR-1741":
-            location = 4* b['usbNr'] + b['boardNr'] + 1
-            label = "IVTEMP-{}".format(location)
-            #print(label)
-            #pvblocks.write_block_label(b['id'], label)
+
+            label = f"{system_number}.{4 * b['usbNr'] + (4 - b['boardNr'])}"
+
+            print("PVTEMP" + label)
+            pvblocks.write_block_label(b['id'], "PVTEMP" + label)
             cnt = 1
             for s in b['sensors']:
-                #pvblocks.update_sensor_description(s['id'], "TC-%d-%d" % (location, cnt))
+                pvblocks.update_sensor_description(s['id'], "TC-%s-%d" % (label, cnt))
                 cnt = cnt + 1
 
 def RecreatePvDevices():
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1727":
             channel = pvblocks_api.get_channel_number(b['usbNr'], b['boardNr'], b['channelNr'])
-            label = "PvDevice-{}".format(channel)
+            label = f"PvDevice-{get_racknr(b['usbNr'], b['boardNr'])}.{channel}"
             pvblocks.create_pvdevice(label)
 
 def RecreatePvDevicesAndAssign():
     board_tc_sensor_ids = {}
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1741":
-            board_tc_sensor_ids['boardNr{}'.format(b['boardNr'])] = [b['sensors'][0]['id'], b['sensors'][1]['id']]
+            board_tc_sensor_ids['rackNr{}'.format(b['boardNr'])] = [b['sensors'][0]['id'], b['sensors'][1]['id']]
 
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1727":
@@ -124,75 +128,75 @@ def RecreatePvDevicesAndAssign():
                 pvblocks.attach_sensor_to_pvdevice(tc2_id, dev['id'])
 
 
-def SetStateForAllRr1727(state, voltageBias = 0, block_list = None, skip_labels = []):
+def SetStateForAllRr1727(state, voltageBias = 0, block_list = None, skip_guids = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
-        if b['label'] in skip_labels:
+        if b['guid'] in skip_guids:
             continue
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_state(b['guid'], state, voltageBias)
 
-def SetSweepParametersForAllRr1727(points, integration_cycles, sweep_type, block_list = None, skip_labels = []):
+def SetSweepParametersForAllRr1727(points, integration_cycles, sweep_type, block_list = None, skip_guids = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
-        if b['label'] in skip_labels:
+        if b['guid'] in skip_guids:
             continue
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_default_sweep(b['id'], points, integration_cycles, sweep_type)
 
-def SetCalibrationValuesForAllRr1727(A, B, C, D, block_list = None, skip_labels = []):
+def SetCalibrationValuesForAllRr1727(A, B, C, D, block_list = None, skip_guids = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
-        if b['label'] in skip_labels:
+        if b['label'] in skip_guids:
             continue
         print(b['label'])
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_calibration_values(b['guid'], A, B, C, D)
 
-def GetAllRr1727CalibrationValues(block_list = None, skip_labels = []):
+def GetAllRr1727CalibrationValues(block_list = None, skip_guids = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     cal_values = []
     for b in block_list:
-        if b['label'] in skip_labels:
+        if b['guid'] in skip_guids:
             continue
         if b['type'] == "RR-1727":
             cal_values.append((b['guid'], b['label'], pvblocks.read_rr1727_calibration_values(b['guid'])))
-            print(f'Reading {b['label']}')
+            print(f'Reading {b["label"]}')
 
     keys = ['guid', 'label', 'calibration_values']
     return dict(zip(keys, cal_values))
 
-def SetMppParametersForAllRr1727(p1, p2, p3, p4, block_list = None, skip_labels = []):
+def SetMppParametersForAllRr1727(p1, p2, p3, p4, block_list = None, skip_guids = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
-        if b['label'] in skip_labels:
+        if b['guid'] in skip_guids:
             continue
         print(b['label'])
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_mpp_values(b['guid'], p1, p2, p3, p4)
 
-def ShowBlocks(block_list = None, skip_labels = []):
+def ShowBlocks(block_list = None, skip_guids = []):
     if block_list is None:
         block_list = pvblocks.Blocks
 
     for b in block_list:
-        if b['label'] in skip_labels:
+        if b['guid'] in skip_guids:
             continue
         print(b['label'])
 
-#DeleteAllPvDevices()
-#RecreateBlockLabels()
-#RecreateBlockLabels_FS(1)
+# DeleteAllPvDevices()
+# RecreateBlockLabels()
+# RecreateBlockLabels_FS(1)
 # RecreatePvDevicesAndAssign()
 # DeleteAllSchedules()
 # (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId) = RecreateSchedules()

@@ -12,6 +12,9 @@ def show_version():
 def get_channel_number(usbNr, boardNr, channelNr):
     return channelNr + 1  +  (boardNr*8) + usbNr*32
 
+def get_rack_number(usbNr, boardNr):
+    return 4 * usbNr + (4-boardNr)
+
 def extract_hex_values(guid_string):
     xx = guid_string[6:8]
     yy = guid_string[21:23]
@@ -219,7 +222,7 @@ class PvBlocksApi(object):
                 sensors = create_rr1741_sensors(b['measurementDevices'])
 
             self.Blocks.append({ "label": b["label"], "id": b["id"],"guid": b['uniqueIdentifier'],
-                                "usbNr": usb, "boardNr": board, "channelNr": channel,
+                                "usbNr": usb, "boardNr": board, "channelNr": channel, "rackNr": get_rack_number(usb, board),
                                              "type": b['type'], "sensors": sensors, 'commands': b['availableCommands']})
         return module_count
 
