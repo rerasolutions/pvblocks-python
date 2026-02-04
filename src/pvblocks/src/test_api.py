@@ -19,7 +19,7 @@ if user_input.lower() == 'quit':
 
 def DeleteAllPvDevices():
     for s in pvblocks.get_pvdevices():
-        print(f"Delete: { s['label']}")
+        print(f"Delete: { s['name']}")
         pvblocks.delete_pvdevice(s['id'])
 
 def DeleteAllSchedules():
@@ -28,8 +28,8 @@ def DeleteAllSchedules():
 
 def RecreateSchedules():
     TemperatureScheduleId = pvblocks.create_schedule(1, False)['id']
-    IvPointScheduleId = pvblocks.create_schedule(1, False)['id']
-    IvCurveScheduleId = pvblocks.create_schedule(2, False)['id']
+    IvPointScheduleId = pvblocks.create_schedule(1, True)['id']
+    IvCurveScheduleId = pvblocks.create_schedule(5, False)['id']
     return (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId)
 
 def AssignTemperatureToSchedule(scheduleId):
@@ -104,24 +104,25 @@ def RecreatePvDevices():
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1727":
             channel = pvblocks_api.get_channel_number(b['usbNr'], b['boardNr'], b['channelNr'])
-            label = f"PvDevice-{get_racknr(b['usbNr'], b['boardNr'])}.{channel}"
+            label = f"PvDevice-{b['rankNr']}.{channel}"
             pvblocks.create_pvdevice(label)
 
 def RecreatePvDevicesAndAssign():
     board_tc_sensor_ids = {}
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1741":
-            board_tc_sensor_ids['rackNr{}'.format(b['boardNr'])] = [b['sensors'][0]['id'], b['sensors'][1]['id']]
+            board_tc_sensor_ids['rackNr{}'.format(b['rackNr'])] = [b['sensors'][0]['id'], b['sensors'][1]['id']]
 
     for b in pvblocks.Blocks:
         if b['type'] == "RR-1727":
-            channel = pvblocks_api.get_channel_number(b['usbNr'], b['boardNr'], b['channelNr'])
-            label = "PvDevice-{}".format(channel)
+
+            label = f"PvDevice-{b['rackNr']}.{b['channelNr']+1}"
+            print(label)
             dev = pvblocks.create_pvdevice(label)
             pvblocks.attach_sensor_to_pvdevice(b['sensors'][0]['id'] ,dev['id'])
             pvblocks.attach_sensor_to_pvdevice(b['sensors'][1]['id'], dev['id'])
-            tc1_id = board_tc_sensor_ids['boardNr{}'.format(b['boardNr'])][0]
-            tc2_id = board_tc_sensor_ids['boardNr{}'.format(b['boardNr'])][1]
+            tc1_id = board_tc_sensor_ids['rackNr{}'.format(b['rackNr'])][0]
+            tc2_id = board_tc_sensor_ids['rackNr{}'.format(b['rackNr'])][1]
             if b['channelNr'] < 4:
                 pvblocks.attach_sensor_to_pvdevice(tc1_id, dev['id'])
             else:
@@ -132,21 +133,27 @@ def SetStateForAllRr1727(state, voltageBias = 0, block_list = None, skip_guids =
     if block_list is None:
         block_list = pvblocks.Blocks
 
+    cnt = 1
+
     for b in block_list:
         if b['guid'] in skip_guids:
             continue
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_state(b['guid'], state, voltageBias)
+            print(f"Set state {cnt}")
+            cnt = cnt + 1
 
 def SetSweepParametersForAllRr1727(points, integration_cycles, sweep_type, block_list = None, skip_guids = []):
     if block_list is None:
         block_list = pvblocks.Blocks
-
+    cnt = 1
     for b in block_list:
         if b['guid'] in skip_guids:
             continue
         if b['type'] == "RR-1727":
             pvblocks.write_rr1727_default_sweep(b['id'], points, integration_cycles, sweep_type)
+            print(f"Set sweep paramteters {cnt}")
+            cnt = cnt + 1
 
 def SetCalibrationValuesForAllRr1727(A, B, C, D, block_list = None, skip_guids = []):
     if block_list is None:
@@ -194,16 +201,16 @@ def ShowBlocks(block_list = None, skip_guids = []):
             continue
         print(b['label'])
 
-# DeleteAllPvDevices()
-# RecreateBlockLabels()
-# RecreateBlockLabels_FS(1)
-# RecreatePvDevicesAndAssign()
-# DeleteAllSchedules()
-# (TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId) = RecreateSchedules()
-# AssignTemperatureToSchedule(TemperatureScheduleId)
-# AssignTIvCurveToSchedule(IvCurveScheduleId)
-# AssignTIvPointToSchedule(IvPointScheduleId)
-# SetStateForAllRr1727(constants.MPP)
-# SetSweepParametersForAllRr1727(200, 4, constants.SWEEP_ISC_TO_VOC)
-# SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
-# SetMppParametersForAllRr1727(0.75, 0, 0.01, 100)
+#DeleteAllPvDevices()
+#RecreateBlockLabels()
+#RecreateBlockLabels_FS(1)
+#RecreatePvDevicesAndAssign()
+#DeleteAllSchedules()
+#(TemperatureScheduleId, IvPointScheduleId, IvCurveScheduleId) = RecreateSchedules()
+#AssignTemperatureToSchedule(TemperatureScheduleId)
+#AssignTIvCurveToSchedule(IvCurveScheduleId)
+#AssignTIvPointToSchedule(IvPointScheduleId)
+#SetStateForAllRr1727(constants.VOC)
+#SetSweepParametersForAllRr1727(200, 4, constants.SWEEP_ISC_TO_VOC)
+#SetCalibrationValuesForAllRr1727(0.125, 0, 10, 0)
+#SetMppParametersForAllRr1727(0.75, 0, 0.01, 100)
