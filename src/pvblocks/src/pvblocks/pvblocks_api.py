@@ -210,20 +210,39 @@ class PvBlocksApi(object):
         blks = self.get_pvblocks()
         module_count = len(blks)
         self.Blocks = []
+
+        system = 1700
+
         for b in blks:
             if not(b['online']):
                 continue
-            (usb, board, channel) = GetPosition(b['uniqueIdentifier'])
-            if b['type'] == 'RR-1720':
-                sensors = create_rr1720_sensors(b['measurementDevices'][0]['sensors'])
-            if b['type'] == 'RR-1727':
-                sensors = create_rr1727_sensors(b['measurementDevices'][0]['sensors'])
-            if b['type'] == 'RR-1741':
-                sensors = create_rr1741_sensors(b['measurementDevices'])
+            if b['type'] == 'RR-1727' or b['type'] == 'RR-1741':
+                system = 1701
 
-            self.Blocks.append({ "label": b["label"], "id": b["id"],"guid": b['uniqueIdentifier'],
-                                "usbNr": usb, "boardNr": board, "channelNr": channel, "rackNr": get_rack_number(usb, board),
-                                             "type": b['type'], "sensors": sensors, 'commands': b['availableCommands']})
+            if system == 1701:
+                (usb, board, channel) = GetPosition(b['uniqueIdentifier'])
+
+                if b['type'] == 'RR-1727':
+                    sensors = create_rr1727_sensors(b['measurementDevices'][0]['sensors'])
+                if b['type'] == 'RR-1741':
+                    sensors = create_rr1741_sensors(b['measurementDevices'])
+
+                self.Blocks.append({"label": b["label"], "id": b["id"], "guid": b['uniqueIdentifier'],
+                                    "usbNr": usb, "boardNr": board, "channelNr": channel,
+                                    "rackNr": get_rack_number(usb, board),
+                                    "type": b['type'], "sensors": sensors, 'commands': b['availableCommands']})
+            else:
+                sensors = None
+                if b['type'] == 'RR-1720':
+                    sensors = create_rr1720_sensors(b['measurementDevices'][0]['sensors'])
+                if b['type'] == 'RR-1740':
+                    sensors = create_rr1741_sensors(b['measurementDevices'])
+
+                if sensors is not None:
+                    self.Blocks.append({"label": b["label"], "id": b["id"], "guid": b['uniqueIdentifier'],
+                                        "type": b['type'], "sensors": sensors, 'commands': b['availableCommands']})
+
+
         return module_count
 
     def get_system_info(self):
