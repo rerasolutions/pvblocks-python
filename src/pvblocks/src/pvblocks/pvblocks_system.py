@@ -345,13 +345,13 @@ class IvMpp27(PvBlock):
 
     def read_ivpoint(self, leave_open=False):
 
-        if not self.uart.is_open:
-            self.open()
+
+        #self.open()
         self.uart.write(serial.to_bytes([self.node, constants.READ_COMMAND]))
         sleep(0.1)
         bts = ReadSerial(self.uart)
-        if not leave_open:
-            self.close()
+        #if not leave_open:
+        #    self.close()
 
         if len(bts) < 15:
             raise exceptions.UnexpectedResponseException()
