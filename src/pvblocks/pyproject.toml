@@ -1,6 +1,6 @@
 [project]
 name = "pvblocks"
-version = "0.1.9"
+version = "0.1.10"
 authors = [
   { name="Erik Haverkamp", email="erik@rera.nl" },
 ]
@@ -12,6 +12,9 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-
+dependencies = [
+    "requests",
+    "pyserial"
+]
 [project.urls]
 Homepage = "https://github.com/rerasolutions/pvblocks-python"

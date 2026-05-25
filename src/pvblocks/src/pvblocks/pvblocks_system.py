@@ -5,6 +5,7 @@ import serial
 import uuid
 import struct
 from time import sleep
+import time
 from enum import IntEnum
 
 
@@ -187,6 +188,7 @@ class IvMpp(PvBlock):
         sleep(0.5)
         bts = ReadSerial(self.uart)
         self.close()
+
         if len(bts) < 15:
             raise exceptions.UnexpectedResponseException()
 
@@ -341,13 +343,16 @@ class IvMpp27(PvBlock):
         sleep(0.5)
         self.close()
 
-    def read_ivpoint(self):
+    def read_ivpoint(self, leave_open=False):
 
-        self.open()
+        if not self.uart.is_open:
+            self.open()
         self.uart.write(serial.to_bytes([self.node, constants.READ_COMMAND]))
-        sleep(0.5)
+        sleep(0.1)
         bts = ReadSerial(self.uart)
-        self.close()
+        if not leave_open:
+            self.close()
+
         if len(bts) < 15:
             raise exceptions.UnexpectedResponseException()
 
@@ -489,6 +494,10 @@ class IvMpp27(PvBlock):
         self.uart.write(serial.to_bytes(tx + data))
         self.close()
         sleep(0.5)
+
+    def close(self):
+        if self.uart.is_open:
+            self.uart.close()
 
 
 
