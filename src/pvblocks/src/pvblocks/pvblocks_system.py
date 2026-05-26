@@ -338,20 +338,19 @@ class IvMpp27(PvBlock):
         self.node = bytes[0]
 
     def reset(self):
-        self.open()
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(serial.to_bytes([self.node, constants.SELF_RESET_CMD]))
         sleep(0.5)
-        self.close()
+
 
     def read_ivpoint(self, leave_open=False):
 
-
-        #self.open()
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(serial.to_bytes([self.node, constants.READ_COMMAND]))
         sleep(0.1)
         bts = ReadSerial(self.uart)
-        #if not leave_open:
-        #    self.close()
 
         if len(bts) < 15:
             raise exceptions.UnexpectedResponseException()
@@ -366,37 +365,37 @@ class IvMpp27(PvBlock):
         return ivpoint
 
     def ApplyVoc(self):
-        self.open()
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(serial.to_bytes([self.node, constants.IDLE_COMMAND]))
         sleep(0.5)
-        self.close()
 
 
     def ApplyMpp(self):
-        self.open()
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(serial.to_bytes([self.node, constants.MPP_COMMAND]))
         sleep(0.5)
-        self.close()
 
     def ApplyIsc(self):
         voltage = 0.0;
-        self.open()
         bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(serial.to_bytes([self.node, constants.VOLTAGE_COMMAND, bytes[0], bytes[1], bytes[2], bytes[3]]))
         sleep(0.5)
-        self.close()
 
     def ApplyVoltageBias(self, voltage):
-        self.open()
         bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(
             serial.to_bytes([self.node, constants.VOLTAGE_COMMAND, bytes[0], bytes[1], bytes[2], bytes[3]]))
         sleep(0.5)
-        self.close()
 
     def measure_ivcurve(self, points, delay_ms, sweepstyle):
-        self.open()
-
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(
             serial.to_bytes([self.node, constants.SET_TRIGGER_COMMAND, 0]))
 
@@ -415,14 +414,15 @@ class IvMpp27(PvBlock):
             sleep(0.5)
             status = self.read_statusbyte()
 
-        self.close()
+
         points_measured = status.statusbytes[0]
         curve = self.transfer_curve(points_measured)
 
         return curve
 
     def transfer_curve(self, points):
-        self.open()
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(serial.to_bytes([self.node, constants.TRANSFER_CURVE_COMMAND]))
         sleep(0.5)
         availablebytes = 8 + (points * 8) + 1
@@ -432,7 +432,7 @@ class IvMpp27(PvBlock):
             print(toread)
             sleep(0.1)
         bts = ReadSerial(self.uart)
-        self.close()
+
 
         voltages = []
         currents = []
@@ -475,7 +475,8 @@ class IvMpp27(PvBlock):
 
     def read_eeprom(self, address, length):
         bts = list(address.to_bytes(self.node, 'little'))
-        self.open()
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(
             serial.to_bytes([self.node, constants.READ_EEPROM_COMMAND, length, bts[0], bts[1]]))
 
@@ -483,24 +484,15 @@ class IvMpp27(PvBlock):
             sleep(0.01)
 
         bts = ReadSerial(self.uart)
-        self.close()
         return bts[3:]
 
     def write_eeprom(self, data, address):
         bts = list(address.to_bytes(self.node, 'little'))
         tx = [self.node, constants.WRITE_EEPROM_COMMAND, len(data), bts[0], bts[1]]
-
-        self.open()
+        if not self.uart.is_open:
+            self.uart.open()
         self.uart.write(serial.to_bytes(tx + data))
-        self.close()
         sleep(0.5)
-
-    def close(self):
-        if self.uart.is_open:
-            self.uart.close()
-
-
-
 
 
 class PvIrr(PvBlock):
