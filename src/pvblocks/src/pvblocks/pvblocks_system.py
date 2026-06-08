@@ -195,8 +195,8 @@ class IvMpp(PvBlock):
         if bts[2] != 12:
             raise exceptions.UnexpectedResponseException()
 
-        r1 = int.from_bytes(bts[3:7], "little") / 10000.0
-        r2 = int.from_bytes(bts[7:11], "little") / 100000.0
+        r1 = int.from_bytes(bts[3:7], "little", signed=True) / 10000.0
+        r2 = int.from_bytes(bts[7:11], "little", signed=True) / 100000.0
         ivpoint = IvPoint(r1, r2)
 
         return ivpoint
@@ -217,14 +217,14 @@ class IvMpp(PvBlock):
     def ApplyIsc(self):
         voltage = 0.0;
         self.open()
-        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little", signed=True))
         self.uart.write(serial.to_bytes([2, constants.VOLTAGE_COMMAND, bytes[0], bytes[1], bytes[2], bytes[3]]))
         sleep(0.5)
         self.close()
 
     def ApplyVoltageBias(self, voltage):
         self.open()
-        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little", signed=True))
         self.uart.write(
             serial.to_bytes([2, constants.VOLTAGE_COMMAND, bytes[0], bytes[1], bytes[2], bytes[3]]))
         sleep(0.5)
@@ -275,9 +275,9 @@ class IvMpp(PvBlock):
 
         for i in range(1, int((availablebytes - 1)/8)):
             index = (i * 8) + 1
-            voltages.append(int.from_bytes(bts[index:(index+4)], "little") / 10000.0)
+            voltages.append(int.from_bytes(bts[index:(index+4)], "little", signed=True) / 10000.0)
             index = index + 4
-            currents.append(int.from_bytes(bts[index:(index+4)], "little") / 100000.0)
+            currents.append(int.from_bytes(bts[index:(index+4)], "little", signed=True) / 100000.0)
 
         return {'voltages': voltages, 'currents': currents}
 
@@ -358,8 +358,8 @@ class IvMpp27(PvBlock):
         if bts[2] != 12:
             raise exceptions.UnexpectedResponseException()
 
-        r1 = int.from_bytes(bts[3:7], "little") / 10000.0
-        r2 = int.from_bytes(bts[7:11], "little") / 100000.0
+        r1 = int.from_bytes(bts[3:7], "little", signed=True) / 10000.0
+        r2 = int.from_bytes(bts[7:11], "little", signed=True) / 100000.0
         ivpoint = IvPoint(r1, r2)
 
         return ivpoint
@@ -379,14 +379,14 @@ class IvMpp27(PvBlock):
 
     def ApplyIsc(self):
         voltage = 0.0;
-        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little", signed=True))
         if not self.uart.is_open:
             self.uart.open()
         self.uart.write(serial.to_bytes([self.node, constants.VOLTAGE_COMMAND, bytes[0], bytes[1], bytes[2], bytes[3]]))
         sleep(0.5)
 
     def ApplyVoltageBias(self, voltage):
-        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little"))
+        bytes = list(((int)(1000 * voltage)).to_bytes(4, "little", signed=True))
         if not self.uart.is_open:
             self.uart.open()
         self.uart.write(
@@ -439,9 +439,9 @@ class IvMpp27(PvBlock):
 
         for i in range(1, int((availablebytes - 1)/8)):
             index = (i * 8) + 1
-            voltages.append(int.from_bytes(bts[index:(index+4)], "little") / 10000.0)
+            voltages.append(int.from_bytes(bts[index:(index+4)], "little", signed=True) / 10000.0)
             index = index + 4
-            currents.append(int.from_bytes(bts[index:(index+4)], "little") / 100000.0)
+            currents.append(int.from_bytes(bts[index:(index+4)], "little", signed=True) / 100000.0)
 
         return {'voltages': voltages, 'currents': currents}
 
@@ -507,13 +507,13 @@ class PvIrr(PvBlock):
 
         irradiances = []
 
-        r1 = int.from_bytes(bts[3:7], "little") / 1000.0
-        r2 = int.from_bytes(bts[7:11], "little") / 1000.0
+        r1 = int.from_bytes(bts[3:7], "little", signed=True) / 1000.0
+        r2 = int.from_bytes(bts[7:11], "little", signed=True) / 1000.0
         irradiances.append(r1)
         irradiances.append(r2)
         if bts[2] == 16:
-            r3 = int.from_bytes(bts[11:15], "little") / 1000.0
-            r4 = int.from_bytes(bts[15:19], "little") / 1000.0
+            r3 = int.from_bytes(bts[11:15], "little", signed=True) / 1000.0
+            r4 = int.from_bytes(bts[15:19], "little", signed=True) / 1000.0
             irradiances.append(r3)
             irradiances.append(r4)
 
