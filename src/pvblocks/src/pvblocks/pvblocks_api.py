@@ -164,6 +164,10 @@ class PvBlocksApi(object):
         else:
             print('System not online')
 
+    def Shutdown(self):
+        endpoint = '/Host/poweroff'
+        self.post(endpoint, {}, expected_response_code=200, json_response=False)
+
     def get_pvdevices(self):
         endpoint = '/PvDevice'
         return self.get(endpoint)

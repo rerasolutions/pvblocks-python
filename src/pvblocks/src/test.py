@@ -6,7 +6,7 @@ import sys
 
 print("PV-Blocks version: " + pvblocks_system.show_version())
 
-pvblocks = pvblocks_system.PvBlocks('COM5')
+pvblocks = pvblocks_system.PvBlocks('COM6')
 
 
 if pvblocks.init_system():
@@ -37,12 +37,15 @@ for b in pvblocks.PvIrrBlocks:
 if len(pvblocks.IvMppBlocks) > 0:
     iv_mpp = pvblocks.IvMppBlocks[0]
 
-#print(iv_mpp.get_info())
+print(iv_mpp.get_info())
+print(iv_mpp.read_mpp_algorithm())
+print(iv_mpp.read_mpp_parameters())
+
 start_time = time.time()
 for b in pvblocks.IvMppBlocks:
     ivpoint = b.read_ivpoint(leave_open=True)
     print(ivpoint)
-pvblocks.close_system()
+#pvblocks.close_system()
 
 end_time = time.time()
 elapsed_time = end_time - start_time
@@ -67,5 +70,3 @@ print(f"Elapsed Time: {elapsed_time} seconds")
 #ff = pmax/(voc * isc)
 #pmax = p[index_max]
 
-
-pvblocks.close_system()

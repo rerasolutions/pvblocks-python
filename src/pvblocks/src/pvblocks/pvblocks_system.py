@@ -445,6 +445,43 @@ class IvMpp27(PvBlock):
 
         return {'voltages': voltages, 'currents': currents}
 
+
+    def read_mpp_parameters(self):
+        c = {'mpp_parameter_1': 0.0, 'mpp_parameter_2': 0.0, 'mpp_parameter_3': 0.0, 'mpp_parameter_4': 0.0}
+        bts = self.read_eeprom(64, 16)
+        c['mpp_parameter_1'] = struct.unpack('<f', bytearray(bts[0:4]))
+        c['mpp_parameter_2'] = struct.unpack('<f', bytearray(bts[4:8]))
+        c['mpp_parameter_3'] = struct.unpack('<f', bytearray(bts[8:12]))
+        c['mpp_parameter_4'] = struct.unpack('<f', bytearray(bts[12:16]))
+        return c
+
+    def write_mpp_parameters(self, mpp_parameter_1, mpp_parameter_2, mpp_parameter_3, mpp_parameter_4):
+        ba = list(bytearray(struct.pack("<f", mpp_parameter_1)))
+        self.write_eeprom(ba, 64)
+        ba = list(bytearray(struct.pack("<f", mpp_parameter_2)))
+        self.write_eeprom(ba, 68)
+        ba = list(bytearray(struct.pack("<f", mpp_parameter_3)))
+        self.write_eeprom(ba, 72)
+        ba = list(bytearray(struct.pack("<f", mpp_parameter_4)))
+        self.write_eeprom(ba, 76)
+        self.reset()
+        sleep(3)
+
+    def read_mpp_algorithm(self):
+        bts = self.read_eeprom(56, 1)
+        return bts[0]
+
+
+    # 1 = PvBlocks original algorithm without parameters
+    # 2 = Peterub and observe with parameters
+    def write_mpp_algorithm(self, algorithm):
+        if algorithm not in [1,2]:
+            raise exceptions.InvalidParameterException()
+
+        self.write_eeprom([algorithm], 56)
+
+
+
     def read_calibration(self):
         c = {'A': 0.0, 'B': 0.0, 'C': 0.0, 'D': 0.0}
         bts = self.read_eeprom(4, 16)
